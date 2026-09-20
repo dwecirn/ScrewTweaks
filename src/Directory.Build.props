@@ -1,0 +1,101 @@
+<Project>
+
+  <!-- Compile-time key defaults (tracked; edit before building). -->
+  <Import Project="$(MSBuildThisFileDirectory)..\keybinds.props" Condition="Exists('$(MSBuildThisFileDirectory)..\keybinds.props')" />
+
+  <!--
+    Screw Drivers install path resolution order:
+      1. -p:GameDir=...                       (explicit MSBuild property)
+      2. SCREWDRIVERS_DIR environment variable
+      3. .env file at the repository root     (SCREWDRIVERS_DIR=<path>)
+    See .env.example. The first value found wins.
+  -->
+  <PropertyGroup>
+    <DotEnvFile>$(MSBuildThisFileDirectory)..\.env</DotEnvFile>
+
+    <_EnvVarGameDir>$(SCREWDRIVERS_DIR)</_EnvVarGameDir>
+    <GameDir Condition="'$(GameDir)' == ''">$(_EnvVarGameDir)</GameDir>
+
+    <_DotEnvText Condition="'$(GameDir)' == '' and Exists('$(DotEnvFile)')">$([System.IO.File]::ReadAllText('$(DotEnvFile)'))</_DotEnvText>
+    <GameDir Condition="'$(GameDir)' == '' and '$(_DotEnvText)' != ''">$([System.Text.RegularExpressions.Regex]::Match($(_DotEnvText), 'SCREWDRIVERS_DIR\s*=\s*([^\r\n]+)').Groups[1].Value.Trim())</GameDir>
+
+    <BepInExPluginDir Condition="'$(BepInExPluginDir)' == ''">$(GameDir)\BepInEx\plugins</BepInExPluginDir>
+  </PropertyGroup>
+
+  <Target Name="ValidateGameDir" BeforeTargets="PrepareForBuild"
+          Condition="'$(GameDir)' == '' Or !Exists('$(GameDir)')">
+    <Error Code="SD001" Text="GameDir is not set or does not exist: '$(GameDir)'. Set the SCREWDRIVERS_DIR environment variable, or copy .env.example to .env and set SCREWDRIVERS_DIR=path\to\Screw Drivers." />
+  </Target>
+
+  <PropertyGroup>
+    <!-- Fallbacks in case keybinds.props is absent. -->
+    <AssistKey Condition="'$(AssistKey)' == ''">B</AssistKey>
+    <AutoShiftKey Condition="'$(AutoShiftKey)' == ''">N</AutoShiftKey>
+
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BepInEx.Analyzers" Version="1.*" PrivateAssets="all" />
+    <PackageReference Include="BepInEx.Core" Version="5.*" />
+    <PackageReference Include="UnityEngine.Modules" Version="6000.0" IncludeAssets="compile" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.2" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(GameDir)\Screw Drivers_Data\Managed\Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(GameDir)\BepInEx\core\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="BepInEx.Harmony">
+      <HintPath>$(GameDir)\BepInEx\core\BepInEx.Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>$(GameDir)\Screw Drivers_Data\Managed\UnityEngine.UI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="ElectricCarSounds">
+      <HintPath>$(GameDir)\Screw Drivers_Data\Managed\ElectricCarSounds.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="DynamicSoundController">
+      <HintPath>$(GameDir)\Screw Drivers_Data\Managed\DynamicSoundController.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Each plugin DLL is copied into BepInEx\plugins after build. -->
+  <Target Name="CopyPluginToGame" AfterTargets="Build" Condition="Exists('$(BepInExPluginDir)')">
+    <Copy SourceFiles="$(TargetPath)"
+          DestinationFolder="$(BepInExPluginDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+  <!--
+    Generates a KeyBinds constant class from keybinds.props before compilation.
+    Each assembly gets its own copy under <AssemblyName>.Generated.
+  -->
+  <Target Name="GenerateKeyBinds" BeforeTargets="CoreCompile">
+    <PropertyGroup>
+      <_KeyBindsFile>$(IntermediateOutputPath)KeyBinds.g.cs</_KeyBindsFile>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(_KeyBindsFile)" Overwrite="true"
+      Lines="// &lt;auto-generated/&gt; from keybinds.props;namespace $(AssemblyName).Generated;{;    public static class KeyBinds;    {;        public const UnityEngine.KeyCode Assist = UnityEngine.KeyCode.$(AssistKey)%3B;        public const UnityEngine.KeyCode AutoShift = UnityEngine.KeyCode.$(AutoShiftKey)%3B;    };}"
+      WriteOnlyWhenDifferent="true" />
+    <ItemGroup>
+      <Compile Include="$(_KeyBindsFile)" />
+      <FileWrites Include="$(_KeyBindsFile)" />
+    </ItemGroup>
+  </Target>
+
+</Project>

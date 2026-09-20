@@ -1,0 +1,17 @@
+<Project>
+
+  <PropertyGroup>
+    <!--
+      Default key bindings, written as UnityEngine.KeyCode member names
+      (e.g. B, N, F5, LeftShift, Mouse0).
+
+      These are compiled into the plugins as their initial values. Players can
+      override them at run time in:
+        BepInEx/config/dev.dwecirn.screwtweaks.assist.cfg
+        BepInEx/config/dev.dwecirn.screwtweaks.autoshift.cfg
+    -->
+    <AssistKey>B</AssistKey>
+    <AutoShiftKey>N</AutoShiftKey>
+  </PropertyGroup>
+
+</Project>

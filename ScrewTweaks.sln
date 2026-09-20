@@ -1,0 +1,48 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{FD0BCB4B-1084-48FC-A2CC-60B04E7309A2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScrewTweaks.PowerFactor", "src\ScrewTweaks.PowerFactor\ScrewTweaks.PowerFactor.csproj", "{8D4C9C48-DFC0-4647-8636-63EB1657B942}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScrewTweaks.Assist", "src\ScrewTweaks.Assist\ScrewTweaks.Assist.csproj", "{44387B84-B03D-47CF-87E1-19E0AADBD757}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScrewTweaks.AutoShift", "src\ScrewTweaks.AutoShift\ScrewTweaks.AutoShift.csproj", "{83BC8399-FCFA-42DF-9C14-B9B9C1A57B7A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScrewTweaks.EngineSound", "src\ScrewTweaks.EngineSound\ScrewTweaks.EngineSound.csproj", "{28458417-1753-4700-BF66-F38054509612}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8D4C9C48-DFC0-4647-8636-63EB1657B942}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8D4C9C48-DFC0-4647-8636-63EB1657B942}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8D4C9C48-DFC0-4647-8636-63EB1657B942}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8D4C9C48-DFC0-4647-8636-63EB1657B942}.Release|Any CPU.Build.0 = Release|Any CPU
+		{44387B84-B03D-47CF-87E1-19E0AADBD757}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{44387B84-B03D-47CF-87E1-19E0AADBD757}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{44387B84-B03D-47CF-87E1-19E0AADBD757}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{44387B84-B03D-47CF-87E1-19E0AADBD757}.Release|Any CPU.Build.0 = Release|Any CPU
+		{83BC8399-FCFA-42DF-9C14-B9B9C1A57B7A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{83BC8399-FCFA-42DF-9C14-B9B9C1A57B7A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{83BC8399-FCFA-42DF-9C14-B9B9C1A57B7A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{83BC8399-FCFA-42DF-9C14-B9B9C1A57B7A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{28458417-1753-4700-BF66-F38054509612}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{28458417-1753-4700-BF66-F38054509612}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{28458417-1753-4700-BF66-F38054509612}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{28458417-1753-4700-BF66-F38054509612}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{8D4C9C48-DFC0-4647-8636-63EB1657B942} = {FD0BCB4B-1084-48FC-A2CC-60B04E7309A2}
+		{44387B84-B03D-47CF-87E1-19E0AADBD757} = {FD0BCB4B-1084-48FC-A2CC-60B04E7309A2}
+		{83BC8399-FCFA-42DF-9C14-B9B9C1A57B7A} = {FD0BCB4B-1084-48FC-A2CC-60B04E7309A2}
+		{28458417-1753-4700-BF66-F38054509612} = {FD0BCB4B-1084-48FC-A2CC-60B04E7309A2}
+	EndGlobalSection
+EndGlobal

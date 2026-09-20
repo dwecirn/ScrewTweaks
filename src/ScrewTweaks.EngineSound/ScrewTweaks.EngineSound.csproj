@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>ScrewTweaks.EngineSound</AssemblyName>
+    <RootNamespace>ScrewTweaks.EngineSound</RootNamespace>
+    <Version>0.1.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Audio volume weighting reads the power-factor multiplier cache. -->
+    <ProjectReference Include="..\ScrewTweaks.PowerFactor\ScrewTweaks.PowerFactor.csproj" />
+  </ItemGroup>
+
+</Project>

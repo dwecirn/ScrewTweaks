@@ -1,0 +1,26 @@
+# --- Build output ---
+bin/
+obj/
+*.dll
+*.pdb
+
+# --- IDE / editor ---
+.idea/
+.vs/
+.vscode/
+*.user
+*.suo
+
+# --- Local configuration ---
+.env
+
+# --- AI tooling ---
+.claude/
+memory/
+
+# --- Decompiled game reference (not redistributable) ---
+/ScrewDrivers/
+
+# --- OS noise ---
+.DS_Store
+Thumbs.db
