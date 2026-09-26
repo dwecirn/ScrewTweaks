@@ -7,6 +7,7 @@ using UnityEngine;
 
 namespace ScrewTweaks.AutoShift
 {
+    [HarmonyPatch]
     public static class AutoShiftFeature
     {
         private const float FastOverThreshFor = 0.2f;
