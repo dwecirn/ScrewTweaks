@@ -12,6 +12,7 @@
     -->
     <AssistKey>B</AssistKey>
     <AutoShiftKey>N</AutoShiftKey>
+    <EcuKey>F7</EcuKey>
   </PropertyGroup>
 
 </Project>
