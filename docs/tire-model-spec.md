@@ -300,3 +300,41 @@ ported source and add a note in the repo (e.g. `THIRD_PARTY_NOTICES`).
 - Multiplayer / ghost replays: does changing tire physics desync recorded runs?
 - Performance: MF per wheel per physics step is cheap, but confirm at 50 Hz × many wheels.
 - `.tir` licensing: ship our own coefficient sets (derived/tuned), don't redistribute others'.
+
+---
+
+## 13. Local reference (Project Chrono clone)
+
+A shallow clone of https://github.com/projectchrono/chrono lives at `reference/chrono`
+(**gitignored**, not part of the repo). ~7529 files / 1.84 GB (`data/` ~1.19 GB, `src/` ~72 MB).
+
+Key paths:
+
+| Path (under `reference/chrono/`) | What |
+|---|---|
+| `src/chrono_vehicle/wheeled_vehicle/tire/ChPac02Tire.cpp/.h` | **Pacejka 2002** vehicle wrapper (~70 KB) — primary port source |
+| `src/chrono_vehicle/wheeled_vehicle/tire/Pac02Tire.cpp/.h` | Pacejka 2002 model core (~32 KB) |
+| `src/chrono_vehicle/wheeled_vehicle/tire/ChPac89Tire.cpp/.h`, `Pac89Tire.cpp/.h` | Pacejka 89 |
+| `src/chrono_vehicle/wheeled_vehicle/tire/ChFialaTire.cpp/.h`, `FialaTire.cpp/.h` | Fiala (transient brush) |
+| `src/chrono_vehicle/wheeled_vehicle/tire/ChTMeasyTire.*`, `ChTMsimpleTire.*`, `TMeasyTire.*`, `TMsimpleTire.*` | TMeasy / TMsimple (few-parameter) |
+| `src/chrono_vehicle/wheeled_vehicle/tire/ChRigidTire.*`, `ChANCFTire.*`, `ChFEATire.*`, `ChReissnerTire.*` | rigid / FEA tiers |
+| `src/chrono_vehicle/wheeled_vehicle/tire/ChTire.*`, `ChForceElementTire.*` | the force-element abstraction we map to |
+
+**Real `.tir` data files shipped in the clone** (PAC2002/PAC89 parameter sets):
+
+```
+data/vehicle/sedan/tire/Sedan_Pac02Tire.tir                 (passenger car)
+data/vehicle/audi/json/audi_Pac02Tire.tir                   (passenger car)
+data/vehicle/Nissan_Patrol/json/suv_Pac02Tire.tir           (SUV)
+data/vehicle/VW_microbus/json/mf_185_80R14.tir              (van)
+data/vehicle/Polaris/Polaris_Pac02Tire.tir                  (ATV / off-road)
+data/vehicle/hmmwv/tire/HMMWV_Pac02Tire.tir                 (military truck)
+data/vehicle/generic/tire/Generic_Pac02Tire.tir             (generic)
+data/vehicle/feda/tires/335_65R22_5_G275MSA_*.tir           (truck, multiple pressures)
+```
+
+These give us real coefficients to start from (pick/scale toward a track tire), without
+redistributing anything (the files stay in the local clone; we ship derived sets or none).
+
+Note: `data/` is ~1.2 GB and is mostly meshes/terrain; it can be deleted to slim the clone if
+disk is a concern — only the `.tir` files under `data/vehicle/**` are valuable for us.
