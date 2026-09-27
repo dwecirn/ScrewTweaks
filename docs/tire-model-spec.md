@@ -244,14 +244,39 @@ Units are already SI-ish in the game (N, kg, m, rad), so no re-scaling needed �
 
 ## 10. Reference implementations (to read, not copy)
 
+**Primary port source: Project Chrono (`Chrono::Vehicle`, BSD-3-Clause).** Permissive license,
+so its tire code can be ported (with attribution). Handling models available:
+
+| Chrono class | Model | Notes |
+|---|---|---|
+| `ChPacejkaTire` (base) | Pacejka | reads a Pacejka parameter file, **transient slip by default**, `GetTireForce_combinedSlip`, camber, driven-wheel flag |
+| `ChPac02Tire` / `Pac02Tire` | Pacejka 2002 | the target model |
+| `ChPac89Tire` / `Pac89Tire` | Pacejka 89 | closest to the game's `CWPacejka` |
+| `ChFialaTire` / `FialaTire` | Fiala brush model | transient, low-speed friendly, couples lat/long — good lightweight option |
+| `TMeasy`, `RigidTire`, `ANCFTire`, `ReissnerTire`, `ChFEATire` | — | other reference points |
+
+Source tree: `src/chrono_vehicle/wheeled_vehicle/tire/` (e.g. `ChPacejkaTire.cpp/.h`,
+`PacejkaTire.cpp/.h`). A `ChTire` is a **force element**: given wheel body position/velocity it
+returns ground force/moment — the same abstraction as `WheelController.FrictionUpdate`.
+
+**Integration choice (recommended: port, not embed).** Port the Pacejka (and/or Fiala) math to
+C# and drop it into the tire slot. Do **not** build Chrono as a native plugin: its rigid-body /
+contact solver is not usable here (the game's cars are Unity rigidbodies) and would add a large
+native dependency for no benefit.
+
+Secondary references (formula cross-check):
+
 | Source | Use |
 |---|---|
 | **python `vdrift-tools/tirepn.py`** | compact PAC2002 `PacejkaFx/Fy/Mz/Gx/Gy/Svy` — best formula reference |
-| **VDrift `cartire.h`** | `Pacejka_Fx/Fy/Mz` + Beckman combined slip + friction-circle methods |
+| **VDrift `cartire.h`** | `Pacejka_Fx/Fy/Mz` + Beckman combined slip + friction-circle methods (GPL: read only) |
 | **Racer (racer.nl) pacejka page** | MF5.2 combined-slip (`Gxa`, `Gyk`) formulas + similarity method (Pacejka ch.4.2.2) |
 | **Tread (JS) / PAC2002** | another readable PAC2002 |
 | **Pacejka, *Tyre and Vehicle Dynamics*** | the source of all of the above |
 | Assetto Corsa `tyres.ini` docs | parameter *concepts* (RELAXATION_LENGTH, FLEX, CAMBER_GAIN, COMBINED_FACTOR, thermal) — model is closed, ideas are not |
+
+**Attribution**: if code is ported from Project Chrono, keep its BSD-3 copyright header in the
+ported source and add a note in the repo (e.g. `THIRD_PARTY_NOTICES`).
 
 ---
 
@@ -259,8 +284,9 @@ Units are already SI-ish in the game (N, kg, m, rad), so no re-scaling needed �
 
 1. **Slot skeleton**: `ITireModel` + `Native` (calls original) + `Pacejka2002` stub; select via
    cfg/panel (same pattern as `ScrewTweaks.ECU`).
-2. **Pure slip Fx/Fy** from a `.tir` + combined slip (similarity first) + wheel spin dynamics.
-   Straight-line lock-up and steady-state cornering must match vanilla grip order of magnitude.
+2. **Pure slip Fx/Fy + combined slip + wheel spin dynamics**, ported from Project Chrono's
+   `ChPacejkaTire` / `Pac02Tire` (BSD-3; keep the copyright header). Straight-line lock-up and
+   steady-state cornering must match vanilla grip order of magnitude.
 3. **Relaxation length** + low-speed handling (this is where the feel upgrade lands).
 4. **Load sensitivity / camber scaling** + Mz (aligning torque).
 5. **Surface scaling** (asphalt/sand) + optional thermal/pressure (AC-style, later).
