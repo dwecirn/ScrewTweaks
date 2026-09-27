@@ -338,3 +338,45 @@ redistributing anything (the files stay in the local clone; we ship derived sets
 
 Note: `data/` is ~1.2 GB and is mostly meshes/terrain; it can be deleted to slim the clone if
 disk is a concern — only the `.tir` files under `data/vehicle/**` are valuable for us.
+
+---
+
+## 14. Chrono tire model family (inventory & recommendation)
+
+`Chrono::Vehicle` ships a whole family. Architecture: `ChTire` → `ChForceElementTire` → concrete
+models. `Synchronize(time, terrain)` computes kinematics; `Advance(step)` integrates internal
+state (each model has its own `m_stepsize` → sub-stepping may be needed at our 50 Hz).
+
+### Handling (semi-empirical) — relevant to us
+
+| Model | Basis | Params | Transient / low speed | Combined slip | Notes |
+|---|---|---|---|---|---|
+| **`ChPac02Tire`** | Pacejka 2002 (Pacejka's book) | full MF-Tire subset via **`.tir`** (ADAMS/Car compatible) | **relaxation length** `CalcSigmaK/CalcSigmaA` + **Dahl friction** at standstill (bristle `brx/bry`) + Coulomb blend (`vcoulomb`, `frblend_*`) | **friction ellipse (default) or Pacejka method** (`use_mode` 3/4) | also Mx overturning / My rolling / Mz aligning; optional inflation pressure; validated (FED-Alpha, KRC) |
+| `ChPac89Tire` | Pacejka 89 | A0-A13 / B0-B13 / C0-C17 | Dahl standstill | `CombinedCoulombForces` | simpler; no pressure, no Mx/My |
+| **`ChTMeasyTire`** | TMeasy (Rill) | characteristic points at PN and 2·PN (`dfx0`, `sxm`, `fxm`, `sxs`, `fxs`, …) | Dahl standstill; optional contact smoothing (Sui & Hershey) | `tmxy_combined` | **parameter guessing** (`GuessPassCar70Par` / `GuessTruck80Par`) from tire size; validated (KRC) |
+| `ChTMsimpleTire` | TMsimple (Hirschberg) | very few | Dahl standstill; smoothing option | same algorithm as TMeasy | simplest handling model |
+| `ChFialaTire` | Fiala brush | few (`CSLIP`, `CALPHA`, `UMIN/UMAX`, relaxation) | **transient slip state equations** (from ADAMS/tire); couples lat/long | inside the brush model | low-speed friendly |
+
+### Other tiers (not handling)
+
+- Rigid: `ChRigidTire` (rigid cylinder + terrain contact; needs rigid-contact terrain).
+- Deformable / FEA: `ChANCFTire` / `ANCFTire` / `ANCFToroidalTire`, `ChReissnerTire`,
+  `ChFEATire` (for ride / obstacle / FEA accuracy, not real-time handling).
+
+### Orthogonal options
+
+- Contact algorithm: `SINGLE_POINT`, `FOUR_POINTS` (TMeasy), `ENVELOPE` (Sui & Hershey).
+- **Dahl friction standstill model** is present in every handling model — this is the low-speed
+  jitter solution (bristle states + damping), directly reusable for our low-speed handling.
+
+### Recommendation
+
+- **Primary: port `ChPac02Tire`** — most complete, `.tir`-driven, ellipse/Pacejka combined slip,
+  relaxation length + Dahl standstill, aligning/overturning/rolling moments. Matches this spec.
+- **Alternative: `ChTMeasyTire`** — few, intuitive parameters plus parameter *guessing* from tire
+  size (great for arbitrary cars), also validated.
+- `ChFialaTire` as a lightweight fallback; `ChPac89Tire` as the simplest MF.
+
+Files: `src/chrono_vehicle/wheeled_vehicle/tire/ChPac02Tire.cpp` (~70 KB) + `Pac02Tire.cpp`
+(~32 KB). The `.tir` loader (`SetMFParamsByFile`, `LoadSection*`) lives in `ChPac02Tire.cpp` and
+can be ported or replaced with a small C# TIR parser.
