@@ -43,6 +43,8 @@ namespace ScrewTweaks.ECU
 
             Aids.TractionTargetConfig = Config.Bind("Traction", "TargetSlip", 0.12f, "Slip ratio the progressive traction control aims to hold.");
             Aids.TractionGainConfig = Config.Bind("Traction", "Gain", 3f, "How hard the drive torque is cut as slip exceeds the target.");
+
+            Aids.BrakeBiasConfig = Config.Bind("Brakes", "Bias", 0f, "Brake bias shift: front wheels get (1 + bias) and rear wheels (1 - bias) of their requested brake. 0 = the game's own distribution. Positive = more front bias.");
         }
 
         private void Start()
@@ -71,6 +73,10 @@ namespace ScrewTweaks.ECU
                 DrawSlider("  Target slip", Aids.TractionTargetConfig, 0.02f, 0.60f, "0.00");
                 DrawSlider("  Cut gain", Aids.TractionGainConfig, 0.5f, 12f, "0.0");
             }
+
+            GUILayout.Space(10f);
+            GUILayout.Label("Brake bias (always active)");
+            DrawSlider("  Front <-> rear", Aids.BrakeBiasConfig, -0.5f, 0.5f, "0.00");
 
             GUILayout.Space(10f);
             GUILayout.Label("Changes apply live and are saved to the config file.");

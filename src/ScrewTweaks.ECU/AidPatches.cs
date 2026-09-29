@@ -1,5 +1,6 @@
 #nullable enable
 
+using System.Collections.Generic;
 using HarmonyLib;
 using NWH.WheelController3D;
 using UnityEngine;
@@ -36,7 +37,7 @@ namespace ScrewTweaks.ECU
             {
                 if (Skip(__instance.DrivingCar) || InAir(__instance.UseNWH, __instance.WheelController)) return;
 
-                float brake = WheelBrakeRef(__instance);
+                float brake = ApplyBias(__instance, WheelBrakeRef(__instance));
                 var ctx = Context(__instance, brake);
 
                 // --- brake channel (ABS) ---
@@ -77,7 +78,7 @@ namespace ScrewTweaks.ECU
                 if (Aids.Abs != AidMode.Progressive) return;
                 if (Skip(__instance.DrivingCar) || InAir(__instance.UseNWH, __instance.WheelController)) return;
 
-                float raw = BrakeWheelBrakeRef(__instance);
+                float raw = ApplyBias(__instance, BrakeWheelBrakeRef(__instance));
                 if (raw <= 0f) return;
 
                 float modified = Aids.ProgressiveAbs.Apply(Context(__instance, raw), raw);
@@ -182,6 +183,70 @@ namespace ScrewTweaks.ECU
             {
                 wheel.WheelCollider.motorTorque = torque;
             }
+        }
+
+        // ------------------------------------------------------------------ brake bias
+
+        private static readonly Dictionary<WheelController, bool> FrontWheelCache =
+            new Dictionary<WheelController, bool>();
+
+        /// <summary>
+        /// Front/rear classification taken from the game itself: SimpleCar2 fills
+        /// FrontWheelsSteerer.FrontWheels with the steerable wheels (after flipping any that ended up
+        /// behind the centre of mass). Cached per wheel, and only cached once the array is populated
+        /// so an early FixedUpdate cannot bake in a wrong answer.
+        /// </summary>
+        private static bool IsFrontWheel(DrivingCar? car, WheelController? wheel)
+        {
+            if (car == null || wheel == null) return false;
+            if (FrontWheelCache.TryGetValue(wheel, out bool cached)) return cached;
+
+            try
+            {
+                var fronts = car.GetComponent<FrontWheelsSteerer>()?.FrontWheels;
+                if (fronts == null || fronts.Length == 0) return false;
+
+                bool front = false;
+                foreach (var candidate in fronts)
+                {
+                    if (candidate != wheel) continue;
+                    front = true;
+                    break;
+                }
+
+                FrontWheelCache[wheel] = front;
+                return front;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static float ApplyBias(MechanicalOutputWheel wheel, float brake)
+        {
+            float bias = Aids.BrakeBias;
+            if (bias == 0f || brake <= 0f) return brake;
+
+            float scale = IsFrontWheel(wheel.DrivingCar, wheel.WheelController) ? 1f + bias : 1f - bias;
+            float biased = brake * Mathf.Clamp(scale, 0f, 2f);
+
+            WheelBrakeRef(wheel) = biased;
+            ApplyBrake(wheel, biased);
+            return biased;
+        }
+
+        private static float ApplyBias(MechanicalOutputWheelBrake wheel, float brake)
+        {
+            float bias = Aids.BrakeBias;
+            if (bias == 0f || brake <= 0f) return brake;
+
+            float scale = IsFrontWheel(wheel.DrivingCar, wheel.WheelController) ? 1f + bias : 1f - bias;
+            float biased = brake * Mathf.Clamp(scale, 0f, 2f);
+
+            BrakeWheelBrakeRef(wheel) = biased;
+            ApplyBrake(wheel, biased);
+            return biased;
         }
     }
 }
