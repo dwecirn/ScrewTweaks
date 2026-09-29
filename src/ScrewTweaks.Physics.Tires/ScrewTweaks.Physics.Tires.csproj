@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <AssemblyName>ScrewTweaks.ECU</AssemblyName>
-    <RootNamespace>ScrewTweaks.ECU</RootNamespace>
+    <AssemblyName>ScrewTweaks.Physics.Tires</AssemblyName>
+    <RootNamespace>ScrewTweaks.Physics.Tires</RootNamespace>
     <Version>0.1.0</Version>
   </PropertyGroup>
 

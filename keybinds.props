@@ -12,7 +12,8 @@
     -->
     <AssistKey>B</AssistKey>
     <AutoShiftKey>N</AutoShiftKey>
-    <EcuKey>F7</EcuKey>
+    <PanelKey>F7</PanelKey>
+    <DumpKey>F8</DumpKey>
   </PropertyGroup>
 
 </Project>

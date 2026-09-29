@@ -5,7 +5,7 @@ using System.Reflection;
 using BepInEx;
 using BepInEx.Configuration;
 using HarmonyLib;
-using ScrewTweaks.ECU.Generated;
+using ScrewTweaks.UI;
 using UnityEngine;
 
 namespace ScrewTweaks.ECU
@@ -20,10 +20,8 @@ namespace ScrewTweaks.ECU
     [BepInPlugin(PluginInfo.GUID, PluginInfo.Name, PluginInfo.Version)]
     public class Plugin : BaseUnityPlugin
     {
-        private bool _shown;
         private bool _absOpen;
         private bool _tractionOpen;
-        private Rect _window = new Rect(24f, 24f, 340f, 220f);
 
         private void Awake()
         {
@@ -47,28 +45,13 @@ namespace ScrewTweaks.ECU
         private void Start()
         {
             Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), PluginInfo.GUID);
+            Panel.Register(PluginInfo.Name, DrawSection);
             Logger.LogInfo($"[{PluginInfo.Name}] version {PluginInfo.Version} loaded.");
         }
 
-        private void Update()
-        {
-            if (Input.GetKeyDown(KeyBinds.Ecu))
-                _shown = !_shown;
+        private void Update() => TireDataDump.Update();
 
-            if (_shown)
-            {
-                Cursor.visible = true;
-                Cursor.lockState = CursorLockMode.None;
-            }
-        }
-
-        private void OnGUI()
-        {
-            if (!_shown) return;
-            _window = GUILayout.Window(0x5EC0, _window, DrawWindow, "ScrewTweaks ECU  (F7)");
-        }
-
-        private void DrawWindow(int id)
+        private void DrawSection()
         {
             DrawDropdown("ABS", Aids.Abs, ref _absOpen, SetAbs, new[] { AidMode.Native, AidMode.Off, AidMode.Progressive });
             if (Aids.Abs == AidMode.Progressive)
@@ -83,18 +66,6 @@ namespace ScrewTweaks.ECU
 
             GUILayout.Space(10f);
             GUILayout.Label("Changes apply live and are saved to the config file.");
-            GUI.DragWindow();
-        }
-
-        private static void DrawSlider(string label, ConfigEntry<float>? entry, float min, float max, string format)
-        {
-            if (entry == null) return;
-            GUILayout.BeginHorizontal();
-            GUILayout.Label($"{label}: {entry.Value.ToString(format)}", GUILayout.Width(170f));
-            float value = GUILayout.HorizontalSlider(entry.Value, min, max, GUILayout.Width(120f));
-            GUILayout.EndHorizontal();
-            if (!Mathf.Approximately(value, entry.Value))
-                entry.Value = value;
         }
 
         private static void DrawDropdown(string label, AidMode current, ref bool open, Action<AidMode> onChange, AidMode[] modes)
@@ -121,6 +92,17 @@ namespace ScrewTweaks.ECU
             }
             GUILayout.EndVertical();
             GUILayout.EndHorizontal();
+        }
+
+        private static void DrawSlider(string label, ConfigEntry<float>? entry, float min, float max, string format)
+        {
+            if (entry == null) return;
+            GUILayout.BeginHorizontal();
+            GUILayout.Label($"{label}: {entry.Value.ToString(format)}", GUILayout.Width(170f));
+            float value = GUILayout.HorizontalSlider(entry.Value, min, max, GUILayout.Width(120f));
+            GUILayout.EndHorizontal();
+            if (!Mathf.Approximately(value, entry.Value))
+                entry.Value = value;
         }
 
         private void SetAbs(AidMode mode)
