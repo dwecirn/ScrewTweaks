@@ -494,3 +494,21 @@ The user chose to stay faithful to the game rather than introduce authored penal
 `|D| * loadCoefficient * forceCoefficient` (~25% higher with forceCoefficient 1.35). This follows
 from replacing the native circle clamp with a real friction ellipse; a clamp can be re-added if
 strict parity is ever wanted.
+
+### 18.1 Check for an existing game mechanism first (brake bias lesson)
+
+An external brake-bias control was added and then removed: the game already has one.
+
+`SimpleCar2` sets `MechanicalOutputWheel.BrakeStrength` per wheel from the attached brake part
+(`AttachedSuspension.AttachedBrake.BrakeForce`), defaulting to `0.8` when no brake part is fitted:
+
+    PartBrake1        BrakeForceMin = 1, BrakeForceMax = 1   (fixed)
+    PartBrake2/3      BrakeForceMin = 1, BrakeForceMax = 4   (tunable via the "brakeforce" property)
+    no brake part     0.8
+
+`CarAnalyzer2` maps the part's `brakeforce` property (a 0-100% slider) onto that range, so the
+player already has a continuous, per-wheel 0.8x .. 4x brake strength - i.e. full front/rear bias,
+in the car builder.
+
+Lesson: before adding an ECU control, search for the existing mechanism. Adding one the game
+already has violates the fidelity policy above and duplicates tuning the player already owns.

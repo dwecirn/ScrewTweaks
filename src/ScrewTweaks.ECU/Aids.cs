@@ -90,7 +90,6 @@ namespace ScrewTweaks.ECU
 
         internal static ConfigEntry<float>? TractionTargetConfig;
         internal static ConfigEntry<float>? TractionGainConfig;
-        internal static ConfigEntry<float>? BrakeBiasConfig;
 
         internal static readonly ProgressiveAbs ProgressiveAbs = new ProgressiveAbs();
         internal static readonly ProgressiveTraction ProgressiveTraction = new ProgressiveTraction();
@@ -104,12 +103,6 @@ namespace ScrewTweaks.ECU
 
         internal static float TractionTarget => TractionTargetConfig?.Value ?? 0.12f;
         internal static float TractionGain => TractionGainConfig?.Value ?? 3f;
-
-        /// <summary>
-        /// Brake bias shift: front wheels get (1 + bias) and rear wheels (1 - bias) of their
-        /// requested brake. 0 leaves the game's own distribution untouched.
-        /// </summary>
-        internal static float BrakeBias => BrakeBiasConfig?.Value ?? 0f;
 
         internal static AidMode Parse(string? value)
             => value == nameof(AidMode.Off) ? AidMode.Off
