@@ -26,6 +26,22 @@
 
 
 ---
+## 模块
+
+每个插件互相独立，可以单独安装、开关、调参；唯一的例外是面板——其余模块都把标签页注册进 `ScrewTweaks.Panel.dll`，所以它必须存在。
+
+| 模块 | 作用 | 说明 |
+|---|---|---|
+| `ScrewTweaks.Panel` | 共享的游戏内面板及其自身设置 | [面板](#面板) |
+| `ScrewTweaks.Physics.Tires` | 轮胎受力模型：滑移曲线、组合滑移、松弛长度 | [轮胎物理](#轮胎物理) |
+| `ScrewTweaks.Physics.Suspension` | 四向阻尼与轮子的垂向自由度 | [悬挂物理](#悬挂物理) |
+| `ScrewTweaks.ECU` | ABS 与牵引力控制通道 | [ECU](#ecu) |
+| `ScrewTweaks.Steering` | 瞬间转向、转向限制松弛 | [转向](#转向) |
+| `ScrewTweaks.AutoShift` | 更快的自动换挡 | [自动换挡](#自动换挡) |
+| `ScrewTweaks.EngineSound` | 混合动力车的引擎声音 | [其他插件](#其他插件) |
+| `ScrewTweaks.PowerFactor` | 按引擎类型的功率系数，随车存档 | [其他插件](#其他插件) |
+
+按键：**F7** 开关面板，**F8** 把静态轮胎/轮子数据导出到 `BepInEx/ScrewTweaks.tire-dump.txt`，**F9** 录制 30 秒每轮轮胎遥测到 `BepInEx/ScrewTweaks.tire-telemetry.csv`。
 ## 安装
 
 1. 如果还没装，先给 Screw Drivers 目录装好 **BepInEx 5 (x64)**（`Screw Drivers.exe` 旁边要有 `BepInEx/` 和 `winhttp.dll`）。
@@ -54,49 +70,10 @@ dotnet build ScrewTweaks.sln --no-restore -m:1
 
 键位是 `keybinds.props` 里的编译期默认值，可在插件自己的 `.cfg` 里运行时覆盖。
 
-### 版本号
+每个插件有各自的版本号：加载时会打印到 `BepInEx/LogOutput.log`，也可以在面板的 Settings 标签页里看到。
+整个套件只用日期标记，GitHub 上的标签就是历次发布。
 
-每个插件有**自己独立的版本**，并且只在一个地方定义：该插件 `.csproj` 里的 `<Version>`。`[BepInPlugin]` 的版本字符串和 DLL 元数据都由它生成，所以没有第二处需要同步。
-
-**一次发布是一个"包"，而不是一个统一版本号：**
-
-- 插件的版本号**只在它自己变了时才动**。没变的插件保持原版本，这才是正确的行为；
-- **git 标签用日期**（`2026.09.29`），它标识的是"这次打包"，不会被误当成某个组件的版本；
-- **版本号真正起作用的地方是 `BepInDependency`**：插件可以要求另一个插件的最低版本，不满足时 BepInEx 会**明确报错并拒绝加载**，而不是运行到一半崩掉。
-
-`tools/release.ps1` 负责最烦的那一步——算出**自上次标签以来哪些插件变了**：
-
-```powershell
-pwsh tools/release.ps1              # 哪些变了 + 各插件当前版本
-pwsh tools/release.ps1 -Package     # 同上，并构建打包成 zip
-```
-
-不想看 git 历史，只想要全部版本号：
-
-```powershell
-dotnet build ScrewTweaks.sln --no-restore -m:1 -t:ListVersions
-```
-
----
-
-## 插件与键位
-
-| 程序集 | 用途 | 键 |
-|---|---|---|
-| `ScrewTweaks.Panel` | 共享的 F7 面板宿主，自身没有功能 | **F7** |
-| `ScrewTweaks.Physics.Tires` | 可插拔的轮胎模型插槽（游戏内可选） | **F9**（录制遥测） |
-| `ScrewTweaks.Physics.Suspension` | 可插拔的阻尼模型插槽（游戏内可选） | — |
-| `ScrewTweaks.ECU` | ABS / 牵引力控制通道 | — |
-| `ScrewTweaks.Steering` | Instant Steering + Steering Limit Relax | — |
-| `ScrewTweaks.AutoShift` | 更快的自动换挡（F7 → Auto Shift） | — |
-| `ScrewTweaks.EngineSound` | 混合动力车的引擎声音（两种引擎都能听到） | — |
-| `ScrewTweaks.PowerFactor` | 按引擎类型设置的功率系数，随车存档（全自动） | — |
-
-其他键位：**F8** 把静态轮胎/轮子数据导出到 `BepInEx/ScrewTweaks.tire-dump.txt`。
-
----
-
-## 游戏内面板
+## 面板
 
 按 **F7** 打开一个浮动窗口，默认贴在**屏幕右侧、垂直居中**；拖标题栏移动。标签栏宽度按最长的标题自适应，剩下的宽度全部给内容区。每个功能插件注册一个带标题的板块：
 
@@ -126,11 +103,10 @@ README 和 `.cfg` 文件里的注释不受此影响，始终是英文。
 
 ---
 
-## 调参参考
 
 所有数值都保存在 `BepInEx/config/dev.dwecirn.screwtweaks.<name>.cfg`。
 
-### 轮胎物理
+## 轮胎物理
 
 在 **F7 → Tires** 里选择模型。选择会被记住，重启后仍然生效。
 
@@ -159,7 +135,7 @@ PartWheelDirt2 g= 0.30  BCDE=(  7.0, 1.10, 0.83, 1.00)  k= 0.021/ 0.000 a=  -4.1
 **F9** 会把 30 秒内每个轮子的数据录到 `BepInEx/ScrewTweaks.tire-telemetry.csv`
 （`t, wheel, body, tire, tireGrip, BCDE, kappa, alphaDeg, kappaRaw, alphaRawDeg, Fx, Fy, Fz, vx, omega, fwdMax, sideMax, radius, sigma, peak, camberDeg, camberFx`）。
 
-### 悬挂物理
+## 悬挂物理
 
 在 **F7 → Suspension** 里选择阻尼模型，选择会被记住。`Native` 完全不碰游戏自带的阻尼，也是默认值——所以装上这个插件、不选模型时，游戏行为不变。
 
@@ -228,7 +204,7 @@ PartWheelDirt2 g= 0.30  BCDE=(  7.0, 1.10, 0.83, 1.00)  k= 0.021/ 0.000 a=  -4.1
 
 打开之后轮子会跟随路面、也会离地，尖锐载荷被轮胎吸收而不是直接传给车身。推理过程见 `docs/suspension-model-spec.md` §5.5——包括**为什么控制轮子跳动的是轮胎阻尼而不是阻尼器**：如果以后觉得跳动还是太明显，该动的就是这个数。
 
-### ECU
+## ECU
 
 两条互相独立的通道，每条既可以选**已注册的算法**，也可以选两个保留模式之一：
 
@@ -248,7 +224,7 @@ PartWheelDirt2 g= 0.30  BCDE=(  7.0, 1.10, 0.83, 1.00)  k= 0.021/ 0.000 a=  -4.1
 
 选择任何算法时，都会**自动旁通该通道上游戏自带的 TCS/ABS**，避免两者互相打架。发 动机制动和脚刹走的是同一条刹车通道，所以滑行工况也由 ABS 覆盖。
 
-### 转向
+## 转向
 
 两项设置各出现两次——游戏自带的操控设置页里各有一行（在 *Ignore Steer Angle Limit* 下方），**F7 → Steering** 面板里也各有一个控件。两边改的是同一个配置项，所以不会各说各话。
 
@@ -261,9 +237,11 @@ PartWheelDirt2 g= 0.30  BCDE=(  7.0, 1.10, 0.83, 1.00)  k= 0.021/ 0.000 a=  -4.1
 
 Instant Steering 原本是造车界面里每个悬挂的开关。现在它是全局设置，所以一次作用于所有车；用旧属性存过的车会在存档里留一条不再使用的属性，游戏会忽略它。
 
-### 其他插件
+## 自动换挡
 
-- **Auto Shift** —— `dev.dwecirn.screwtweaks.autoshift.cfg` 里的 `General/Enabled`，和 **F7 → Auto Shift** 里的勾选框是同一个设置。越过转速阈值后 0.2 秒就换挡（原版 1 秒），冷却和扭矩中断也更短；取消勾选会把游戏自己的数值写回去。
+`dev.dwecirn.screwtweaks.autoshift.cfg` 里的 `General/Enabled`，和 **F7 → Auto Shift** 里的勾选框是同一个设置。越过转速阈值后 0.2 秒就换挡（原版 1 秒），冷却和扭矩中断也更短；取消勾选会把游戏自己的数值写回去。
+## 其他插件
+
 - **Engine Sound** —— 恢复原版选择器在混动车上丢掉的那一半引擎声音，并按瞬时扭矩把两者混合。
 - **Power Factor** —— 按引擎类型设置的功率系数，随车的存档一起走。**全自动**：通过 Harmony 注入并持久化，不需要键位。
 ## 行为约定与坑

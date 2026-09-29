@@ -39,6 +39,25 @@ The models are replaceable slots: `ITireModel`, `IDamperModel`, `ITireVerticalMo
 
 
 ---
+## Modules
+
+Every plugin is independent — install, enable and tune them separately. The panel is the one exception:
+`ScrewTweaks.Panel.dll` is what the others register their tabs into, so it has to be there.
+
+| Module | What it does | Reference |
+|---|---|---|
+| `ScrewTweaks.Panel` | The shared in-game panel and its own settings | [Panel](#panel) |
+| `ScrewTweaks.Physics.Tires` | Tyre force model: slip curves, combined slip, relaxation length | [Tire physics](#tire-physics) |
+| `ScrewTweaks.Physics.Suspension` | Four-way damper and the wheel's vertical freedom | [Suspension physics](#suspension-physics) |
+| `ScrewTweaks.ECU` | ABS and traction control channels | [ECU](#ecu) |
+| `ScrewTweaks.Steering` | Instant steering, steering limit relax | [Steering](#steering) |
+| `ScrewTweaks.AutoShift` | Faster automatic shifting | [Auto Shift](#auto-shift) |
+| `ScrewTweaks.EngineSound` | Hybrid engine sound | [Other plugins](#other-plugins) |
+| `ScrewTweaks.PowerFactor` | Per-engine power factor, saved with the car | [Other plugins](#other-plugins) |
+
+Keys: **F7** opens the panel, **F8** dumps static tire and wheel data to
+`BepInEx/ScrewTweaks.tire-dump.txt`, **F9** records 30 s of per-wheel tyre telemetry to
+`BepInEx/ScrewTweaks.tire-telemetry.csv`.
 ## Install
 
 1. Install **BepInEx 5 (x64)** into your Screw Drivers folder if you have not already
@@ -72,55 +91,10 @@ Every plugin is copied into `BepInEx/plugins` automatically after a successful b
 Key bindings are compile-time defaults in `keybinds.props` and can be overridden at runtime in the
 plugin's `.cfg`.
 
-### Versioning
+Each plugin carries its own version, printed to `BepInEx/LogOutput.log` when it loads and listed in the
+panel's Settings tab. The bundle as a whole is only dated; the tags on GitHub are the releases.
 
-Each plugin has its own version, set in exactly one place: `<Version>` in that plugin's `.csproj`.
-The `[BepInPlugin]` version string and the DLL metadata are generated from it, so there is nothing
-else to keep in sync.
-
-A release is a *bundle*, not a single version number:
-
-- a plugin's version only moves when that plugin changes. A plugin that did not change keeps its
-  version, and that is the correct behaviour;
-- the git tag is a date (`2026.09.29`) and identifies the bundle, so it cannot be mistaken for any
-  component's version;
-- [`BepInDependency`](https://docs.bepinex.dev) is where versions actually matter: a plugin can
-  require a minimum version of another, and BepInEx will refuse to load it with a clear error rather
-  than fail at run time.
-
-`tools/release.ps1` does the tedious part — working out which plugins changed since the last tag:
-
-```powershell
-pwsh tools/release.ps1              # what changed, and the current version of each plugin
-pwsh tools/release.ps1 -Package     # the same, then build and zip the bundle
-```
-
-To see every version without git history:
-
-```powershell
-dotnet build ScrewTweaks.sln --no-restore -m:1 -t:ListVersions
-```
-
----
-
-## Plugins and keys
-
-| Assembly | Purpose | Key |
-|---|---|---|
-| `ScrewTweaks.Panel` | Shared F7 panel host. No features of its own. | **F7** |
-| `ScrewTweaks.Physics.Tires` | Pluggable tire model slot (in-game selectable) | **F9** (record telemetry) |
-| `ScrewTweaks.Physics.Suspension` | Pluggable damper model slot (in-game selectable) | — |
-| `ScrewTweaks.ECU` | ABS / traction control channels | — |
-| `ScrewTweaks.Steering` | Instant Steering + Steering Limit Relax | — |
-| `ScrewTweaks.AutoShift` | Faster automatic shifting (F7 → Auto Shift) | — |
-| `ScrewTweaks.EngineSound` | Hybrid engine sound (both engine types audible) | — |
-| `ScrewTweaks.PowerFactor` | Per-engine-type power factor, saved with the car (fully automatic) | — |
-
-Other keys: **F8** dumps static tire/wheel data to `BepInEx/ScrewTweaks.tire-dump.txt`.
-
----
-
-## The in-game panel
+## Panel
 
 Press **F7** for a floating window that opens against the **right edge of the screen, vertically
 centred**. Drag the title bar to move it. The tab column sizes itself to the longest caption and the
@@ -158,11 +132,10 @@ The READMEs and the comments inside the `.cfg` files stay in English regardless.
 
 ---
 
-## Tuning reference
 
 All values are persisted in `BepInEx/config/dev.dwecirn.screwtweaks.<name>.cfg`.
 
-### Tire physics
+## Tire physics
 
 Select a model in **F7 → Tires**. The choice is remembered across sessions.
 
@@ -195,7 +168,7 @@ changes as you drive onto a different surface — so you can watch the per-tire 
 **F9** records 30 s of every wheel to `BepInEx/ScrewTweaks.tire-telemetry.csv`
 (`t, wheel, body, tire, tireGrip, BCDE, kappa, alphaDeg, kappaRaw, alphaRawDeg, Fx, Fy, Fz, vx, omega, fwdMax, sideMax, radius, sigma, peak, camberDeg, camberFx`).
 
-### Suspension physics
+## Suspension physics
 
 Select a damper model in **F7 → Suspension**. The choice is remembered across sessions. `Native` leaves
 the game's own damper untouched and is the default, so installing the plugin changes nothing until you
@@ -302,7 +275,7 @@ of being passed straight to the chassis. `docs/suspension-model-spec.md` §5.5 h
 including why **tyre damping, not the damper, is what controls wheel hop**, which is the thing to revisit
 if hop is ever too visible again.
 
-### ECU
+## ECU
 
 Two independent channels, each with a **registered algorithm** or one of two reserved modes:
 
@@ -324,7 +297,7 @@ Selecting any algorithm **neutralises the game's own TCS/ABS** on the managed ch
 not fight. Engine braking runs through the same brake channel as the foot brake, so the ABS covers
 coasting as well.
 
-### Steering
+## Steering
 
 Both settings appear twice — as a row each on the game's own controls settings page, below *Ignore Steer
 Angle Limit*, and in **F7 → Steering**. Either place edits the same entry, so the two cannot disagree.
@@ -341,12 +314,14 @@ Instant Steering used to be a per-suspension on/off property in the car builder.
 it applies to every car at once; cars saved with the old property keep an unused line in their file, which
 the game ignores.
 
-### Other plugins
+## Auto Shift
 
-- **Auto Shift** — `General/Enabled` in `dev.dwecirn.screwtweaks.autoshift.cfg`, and the same entry
+`General/Enabled` in `dev.dwecirn.screwtweaks.autoshift.cfg`, and the same entry
   as the **F7 → Auto Shift** checkbox. Shifts are taken 0.2 s after the RPM threshold is crossed
   instead of 1 s, with a shorter cooldown and a shorter torque cut. Unticking the box writes the
   game's own values back.
+## Other plugins
+
 - **Engine Sound** — restores sound for the engine type the stock selector drops on hybrids, and
   mixes the two by instantaneous torque.
 - **Power Factor** — a per-engine-type power factor that travels with the car's saved file. Fully
