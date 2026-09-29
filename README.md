@@ -1,5 +1,7 @@
 # ScrewTweaks
 
+**English** | [中文](README.zh-CN.md) | [日本語](README.ja.md)
+
 A BepInEx mod suite for **Screw Drivers**, built around a simple rule:
 
 > **Add physics the game does not have. Do not change the game's own numbers.**
