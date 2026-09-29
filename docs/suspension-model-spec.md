@@ -181,31 +181,45 @@ would need no patch on `SuspensionUpdate` at all. It was rejected because it can
 different bump and rebound knee behaviour, which is exactly the kind of thing a third-party model should
 be able to do.
 
-### 5.2 The shipped model: `Digressive`
+### 5.2 The shipped model: `Four way`
+
+Bump and rebound, each with its own low-speed and high-speed coefficient, meeting at one knee velocity:
 
 ```
-g(v) = v                                 v <= knee
-g(v) = knee + (v - knee) * blowOff       v >  knee
-F    = C * lowSpeedGain * g(v) * (bump ? 1 : reboundRatio)
+F = C * ( v <= knee ? low * v : low * knee + high * (v - knee) )
 ```
+
+with `low` / `high` taken from the row matching the direction of travel. The plot is piecewise linear and
+continuous at the knee, which is what a damper dyno plot looks like: a steep bleed, then the shim stack
+opens and the force rises much more slowly.
 
 Everything is a multiple of the game's own coefficient `C`, so the game's mass, wheel-count and
-`damperforce` scaling is preserved. Defaults:
+`damperforce` scaling is preserved, and the numbers are dimensionless - absolute N.s/m would be two orders
+of magnitude apart between a go-kart and a truck. Defaults:
 
 | Setting | Default | Meaning |
 |---|---|---|
-| `Damper/ReboundRatio` | 2.00 | Rebound coefficient as a multiple of bump. The game uses 1.00 for both |
-| `Damper/LowSpeedGain` | 1.60 | Damping multiplier below the knee |
-| `Damper/KneeVelocity` | 0.10 | Velocity [m/s] where the shim stack opens |
-| `Damper/BlowOffRatio` | 0.25 | Slope above the knee, as a fraction of the slope below |
+| `Damper/BumpLow` | 1.60 | Bump below the knee. The slope of the bleed, and what controls the body over slow inputs |
+| `Damper/BumpHigh` | 0.40 | Bump above the knee. What a kerb sees: lower absorbs the hit |
+| `Damper/ReboundLow` | 3.20 | Rebound below the knee. What arrests the body after a bump |
+| `Damper/ReboundHigh` | 0.80 | Rebound above the knee. Raising it stops a car launching off its springs after a landing |
+| `Damper/KneeVelocity` | 0.10 | Velocity [m/s] where the shim stack opens, shared by both directions |
 
-`LowSpeedGain = 1`, `BlowOffRatio = 1`, `ReboundRatio = 1` reproduces the game exactly, which is the A/B
-switch. The knee velocity is a shaft property and does not scale with the car, which is why it is an
-absolute m/s value.
+**All four at 1.00 reproduces the game exactly**, which is the A/B switch. The knee velocity is a shaft
+property and does not scale with the car, which is why it is an absolute m/s value.
 
-For the default car (936 kg, 4 wheels, street suspension) this takes the damping ratio from 0.22 to about
-0.35 in the low-speed region, and roughly halves the force on a sharp 1 m/s hit. That is the intended
-trade: more control of the body, less harshness on kerbs.
+An earlier revision had only three numbers - a rebound-to-bump ratio, a low-speed gain and a slope ratio -
+which meant bump and rebound shared one curve shape and could only be scaled, not shaped. That is not a
+four-way damper, and it read that way. The four coefficients are independent now; only the knee is still
+shared, which the model API does not force.
+
+For the default car (936 kg, 4 wheels, street suspension) the defaults take the body's damping ratio from
+0.22 to about 0.35 and roughly halve the force on a sharp 1 m/s hit. That is the intended trade: more
+control of the body, less harshness on kerbs.
+
+One characteristic of the piecewise law with the shipped defaults: blow-off applies to *both* directions,
+so the rebound is at its weakest exactly when the suspension is moving fastest - which is a landing. That
+is what `ReboundHigh` is for, and raising it trades a bounce after a drop against a harsher kerb.
 
 ### 5.3 `ReboundFloor`
 
@@ -351,8 +365,7 @@ Specifically:
 4. **Honouring `Part.SuspensionDamper`** (the dead 1.3 on Race parts). It restores the game's own data
    rather than rebalancing it, but it does change car balance, so it is off the table unless the user asks
    for it.
-5. **Per-direction knee and blow-off** (real dampers have different shim stacks in bump and rebound). The
-   model API allows it; the shipped model shares one shape scaled by `ReboundRatio` to keep the panel to
-   four sliders.
+5. **Per-direction knee velocity** (real dampers have separate bump and rebound shim stacks, and therefore
+   separate knees). The four coefficients are already independent; this is the last shared number.
 6. **A tyre that is not linear in the vertical** - progressivity, load dependence, separation. The slot
    accepts it; nothing ships it.

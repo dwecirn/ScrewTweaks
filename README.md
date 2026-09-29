@@ -200,20 +200,39 @@ pick a model.
 
 The spring is deliberately not touched — the part data turned out to be sane already
 (`docs/suspension-model-spec.md`). What the game has no way to express is the damper, which is
-`coefficient × |velocity|` with **the same coefficient in bump and rebound** and no blow-off.
+`coefficient × |velocity|` with **the same coefficient in bump and rebound** and no blow-off at all.
+
+The model is a **four-way** damper: bump and rebound, each with its own low-speed and high-speed
+coefficient, meeting at one knee velocity.
+
+```
+                below the knee   above the knee
+  Bump               1.60           0.40
+  Rebound            3.20           0.80
+  Knee velocity      0.10 m/s
+```
+
+The low-speed numbers are the slopes of the steep part of the plot — the bleed, which is what controls the
+body over slow inputs like roll and pitch. The high-speed numbers are the slopes above the knee, where the
+shim stack is open — what a kerb or a landing sees, and lower means the hit is absorbed instead of passed
+into the chassis.
 
 | Setting | Default | Meaning |
 |---|---|---|
 | `Model/Selected` | `Native` | `Native` = the game's own damper, unchanged |
-| `Damper/ReboundRatio` | `2.00` | Rebound coefficient as a multiple of bump. The game uses `1.00` for both |
-| `Damper/LowSpeedGain` | `1.60` | Damping multiplier below the knee velocity |
-| `Damper/KneeVelocity` | `0.10` | Velocity [m/s] where the shim stack opens |
-| `Damper/BlowOffRatio` | `0.25` | Slope above the knee, as a fraction of the slope below |
-| `Damper/ReboundFloor` | `0.00` | How far the damper may pull the body *down*, as a fraction of the wheel's static load |
+| `Damper/BumpLow` | `1.60` | Bump below the knee |
+| `Damper/BumpHigh` | `0.40` | Bump above the knee. Lower absorbs kerbs |
+| `Damper/ReboundLow` | `3.20` | Rebound below the knee |
+| `Damper/ReboundHigh` | `0.80` | Rebound above the knee. Raise it if the car pogoes after a landing |
+| `Damper/KneeVelocity` | `0.10` | Velocity [m/s] where the shim stack opens, shared by both directions |
+| `Damper/ReboundFloor` | `0.00` | How far the damper may pull the body *down*, as a fraction of the wheel's static load. Not applied at all while a vertical model is selected |
 
-`LowSpeedGain 1.00` + `BlowOffRatio 1.00` + `ReboundRatio 1.00` reproduces the game exactly; that is the
-A/B switch. Everything is a multiple of the coefficient the game computed, so the mass, wheel-count and
-`damperforce` scaling the game already applies is preserved.
+Every coefficient is a multiple of the damping the game computed for that wheel, so the numbers mean the
+same thing on a go-kart and on a truck, and **all four at 1.00 reproduces the game exactly** — that is the
+A/B switch.
+
+The two high-speed numbers trade against each other: less blow-off absorbs kerbs but lets the car launch
+off its springs after a landing. If kerbs feel right and landings pogo, raise `ReboundHigh`.
 
 **The `Suspension` section also shows live per-wheel suspension state:**
 

@@ -48,32 +48,41 @@ namespace ScrewTweaks.Physics.Suspension
                 "derived from the wheel part's mass and the suspension part's wheel rate; they are not " +
                 "settings.");
 
-            DamperTuning.ReboundRatioConfig = Config.Bind(
+            DamperTuning.BumpLowConfig = Config.Bind(
                 "Damper",
-                "ReboundRatio",
-                2.0f,
-                "Rebound coefficient as a multiple of the bump coefficient. The game uses 1.0 for both.");
-
-            DamperTuning.LowSpeedGainConfig = Config.Bind(
-                "Damper",
-                "LowSpeedGain",
+                "BumpLow",
                 1.6f,
-                "Damping multiplier below the knee velocity. 1.0 = the game's own coefficient. " +
-                "1.0 together with BlowOffRatio 1.0 and ReboundRatio 1.0 reproduces the game exactly.");
+                "Bump coefficient below the knee, as a multiple of the game's own. This is the slope of the " +
+                "steep part (the bleed) and the number that decides how controlled the body feels. 1.0 = the game.");
+
+            DamperTuning.BumpHighConfig = Config.Bind(
+                "Damper",
+                "BumpHigh",
+                0.4f,
+                "Bump coefficient above the knee, where the shim stack is open. This is what a kerb sees: " +
+                "lower absorbs the hit instead of passing it into the chassis. 1.0 = the game.");
+
+            DamperTuning.ReboundLowConfig = Config.Bind(
+                "Damper",
+                "ReboundLow",
+                3.2f,
+                "Rebound coefficient below the knee. Rebound is what arrests the body once a bump has " +
+                "passed, which is why it is normally set well above bump. 1.0 = the game.");
+
+            DamperTuning.ReboundHighConfig = Config.Bind(
+                "Damper",
+                "ReboundHigh",
+                0.8f,
+                "Rebound coefficient above the knee. Raising this is what stops a car launching off its " +
+                "springs after a landing, at the cost of making sharp edges harsher. 1.0 = the game.");
 
             DamperTuning.KneeVelocityConfig = Config.Bind(
                 "Damper",
                 "KneeVelocity",
                 0.10f,
-                "Suspension velocity [m/s] at which the damper stops rising as fast. Real dampers knee " +
-                "between about 0.05 and 0.3 m/s. Below it the low-speed gain applies in full.");
-
-            DamperTuning.BlowOffRatioConfig = Config.Bind(
-                "Damper",
-                "BlowOffRatio",
-                0.25f,
-                "Slope above the knee as a fraction of the slope below it. 1.0 = no blow-off (linear, " +
-                "i.e. the game), 0.0 = a hard plateau. Real dampers sit around 0.1 to 0.3.");
+                "Suspension velocity [m/s] where each half's shim stack opens and the force stops rising " +
+                "as fast. Real dampers knee between about 0.05 and 0.3 m/s, and it is a shaft property, so " +
+                "it does not scale with the car. Shared by bump and rebound.");
 
             DamperTuning.ReboundFloorConfig = Config.Bind(
                 "Damper",
@@ -145,13 +154,16 @@ namespace ScrewTweaks.Physics.Suspension
                 ("Damper model: {0}", "阻尼模型：{0}"),
                 ("Tyre vertical model: {0}", "轮胎垂向模型：{0}"),
                 (nativeDamper, "游戏自带的阻尼，未改动：力 = 系数 × |速度|，压缩与回弹用同一个系数，没有卸压。"),
-                (digressive, "压缩/回弹分离 + 卸压曲线。慢速时更硬、冲击时更软，所以车身受控而路缘石不颠。把滑条调回去即可复刻游戏的线性阻尼。"),
+                (digressive, "压缩和回弹各自有独立的低速（泄流）和高速（卸压）系数。慢速时更硬以控制车身，冲击时更软以吸收路肩。四个系数都设成 1.00 就是完全复刻原版。"),
                 (nativeVertical, "游戏自带的轮子：没有垂向自由度，每帧被贴到地面上，所以轮胎什么都吸收不了，轮子本身也没有质量。"),
                 (linear, "有垂向弹性的轮胎：对地面是一个线性弹簧加阻尼器，轮子以零件自身质量悬在悬挂上方。轮子从此可以跟随路面、也可以离地，尖锐载荷被轮胎吸收而不是直接传给车身。"),
-                ("Rebound / bump", "回弹 / 压缩"),
-                ("Low-speed gain", "低速增益"),
-                ("Knee velocity", "拐点速度"),
-                ("Blow-off slope", "卸压斜率"),
+                ("Bump", "压缩"),
+                ("Rebound", "回弹"),
+                ("low speed", "低速"),
+                ("high speed", "高速"),
+                ("Blow-off velocity", "卸压拐点速度"),
+                ("Coefficients are multiples of the game's own damping for that wheel; all four at 1.00 reproduces the game exactly.",
+                    "四个系数都是该轮游戏自带阻尼系数的倍数；都设成 1.00 就是完全复刻原版。"),
                 ("Pull-down floor", "下拉下限"),
                 ("Stiffness and damping are derived from the wheel part's mass and the suspension part's wheel rate. There is nothing to set.",
                     "刚度和阻尼由轮子零件的质量与悬挂零件的轮速（wheel rate）推导，没有可调项。"),
@@ -179,13 +191,16 @@ namespace ScrewTweaks.Physics.Suspension
                 ("Damper model: {0}", "ダンパーモデル: {0}"),
                 ("Tyre vertical model: {0}", "タイヤ上下モデル: {0}"),
                 (nativeDamper, "ゲーム標準のダンパーそのまま：力 = 係数 × |速度|。圧縮と伸張で同じ係数、ブローオフなし。"),
-                (digressive, "圧縮／伸張の分離 + ブローオフ曲線。低速では硬く、鋭い入力では軟らかく。ボディを制御しつつ縁石が突き上げません。スライダーを戻せばゲームの線形ダンパーを再現できます。"),
+                (digressive, "圧縮と伸張それぞれに、独立した低速（ブリード）と高速（ブローオフ）の係数を持ちます。低速では硬くボディを制御し、鋭い入力では軟らかく縁石を吸収します。4 つとも 1.00 でゲームと完全一致します。"),
                 (nativeVertical, "ゲーム標準のホイール：上下の自由度がなく、毎ステップ地面に貼り付けられます。タイヤは何も吸収できず、ホイール自体にも質量がありません。"),
                 (linear, "上下に撓むタイヤ：地面に対して線形のばねとダンパー、その上にホイールがパーツ自身の質量で吊られます。ホイールが路面に追従し、離れることもできるようになり、鋭い荷重はシャシーではなくタイヤが吸収します。"),
-                ("Rebound / bump", "伸張 / 圧縮"),
-                ("Low-speed gain", "低速ゲイン"),
-                ("Knee velocity", "ニー速度"),
-                ("Blow-off slope", "ブローオフ勾配"),
+                ("Bump", "圧縮"),
+                ("Rebound", "伸張"),
+                ("low speed", "低速"),
+                ("high speed", "高速"),
+                ("Blow-off velocity", "ブローオフ開始速度"),
+                ("Coefficients are multiples of the game's own damping for that wheel; all four at 1.00 reproduces the game exactly.",
+                    "4 つの係数はすべて、そのホイールについてゲームが算出した減衰係数の倍数です。4 つとも 1.00 でゲームと完全一致します。"),
                 ("Pull-down floor", "引き下げ下限"),
                 ("Stiffness and damping are derived from the wheel part's mass and the suspension part's wheel rate. There is nothing to set.",
                     "剛性と減衰はホイールパーツの質量とサスペンションパーツのホイールレートから導出されます。設定項目はありません。"),
@@ -220,15 +235,15 @@ namespace ScrewTweaks.Physics.Suspension
             if (!DamperModels.IsNative)
             {
                 GUILayout.Space(10f);
-                DrawSlider(Loc.T("Rebound / bump"), DamperTuning.ReboundRatioConfig, 0.5f, 4f, "0.00");
-                DrawSlider(Loc.T("Low-speed gain"), DamperTuning.LowSpeedGainConfig, 0.5f, 3f, "0.00");
-                DrawSlider(Loc.T("Knee velocity"), DamperTuning.KneeVelocityConfig, 0.01f, 0.5f, "0.00");
-                DrawSlider(Loc.T("Blow-off slope"), DamperTuning.BlowOffRatioConfig, 0f, 1f, "0.00");
+                DrawDamperTable();
+
+                GUILayout.Space(10f);
+                DrawSlider(Loc.T("Blow-off velocity"), DamperTuning.KneeVelocityConfig, 0.01f, 0.5f, "0.00");
                 if (TireVerticalModels.IsNative)
                     DrawSlider(Loc.T("Pull-down floor"), DamperTuning.ReboundFloorConfig, 0f, 1.5f, "0.00");
 
                 GUILayout.Space(6f);
-                GUILayout.Label(Loc.T("Gain 1.00 + blow-off 1.00 + ratio 1.00 = exactly the game."));
+                GUILayout.Label(Loc.T("Coefficients are multiples of the game's own damping for that wheel; all four at 1.00 reproduces the game exactly."));
                 if (TireVerticalModels.IsNative)
                 {
                     GUILayout.Label(DamperTuning.ReboundFloor <= 0f
@@ -339,6 +354,42 @@ namespace ScrewTweaks.Physics.Suspension
             var config = wc.PartConfigurationWheel;
             if (config != null) return config.partType.ToString();
             return wc.gameObject.name;
+        }
+
+        /// <summary>
+        /// The four-way table. Laid out as a 2x2 so the structure is visible at a glance: rows are the
+        /// direction of travel, columns are the two regions either side of the knee.
+        /// </summary>
+        private static void DrawDamperTable()
+        {
+            GUILayout.BeginHorizontal();
+            GUILayout.Space(74f + 40f);
+            GUILayout.Label(Loc.T("low speed"), GUILayout.Width(64f));
+            GUILayout.Label(string.Empty, GUILayout.Width(38f));
+            GUILayout.Label(Loc.T("high speed"), GUILayout.Width(64f));
+            GUILayout.EndHorizontal();
+
+            DrawDamperRow(Loc.T("Bump"), DamperTuning.BumpLowConfig, DamperTuning.BumpHighConfig);
+            DrawDamperRow(Loc.T("Rebound"), DamperTuning.ReboundLowConfig, DamperTuning.ReboundHighConfig);
+        }
+
+        private static void DrawDamperRow(string label, ConfigEntry<float>? low, ConfigEntry<float>? high)
+        {
+            if (low == null || high == null) return;
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(label, GUILayout.Width(74f));
+            low.Value = DrawCoefficient(low.Value);
+            high.Value = DrawCoefficient(high.Value);
+            GUILayout.EndHorizontal();
+        }
+
+        /// <summary>One coefficient: its value, then the slider, snapped to a hundredth so it is stable.</summary>
+        private static float DrawCoefficient(float value)
+        {
+            GUILayout.Label(value.ToString("0.00"), GUILayout.Width(40f));
+            float moved = GUILayout.HorizontalSlider(value, 0f, 5f, GUILayout.Width(64f));
+            return Mathf.Abs(moved - value) < 0.005f ? value : Mathf.Round(moved * 100f) / 100f;
         }
 
         private static void DrawSlider(string label, ConfigEntry<float>? entry, float min, float max, string format)
