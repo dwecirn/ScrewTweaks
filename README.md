@@ -2,11 +2,11 @@
 
 **English** | [中文](README.zh-CN.md) | [日本語](README.ja.md)
 
-A BepInEx mod suite for **Screw Drivers**, built around a simple rule:
+A BepInEx mod suite for **Screw Drivers**. It replaces the game's tire friction with a pluggable,
+physically modelled one that can be switched and tuned in game, adds ABS and traction control
+channels, and includes a few quality-of-life fixes.
 
-> **Add physics the game does not have. Do not change the game's own numbers.**
-
-The suite is split into independent plugins so you can install, enable and tune them separately.
+The suite is split into independent plugins, so you can install, enable and tune them separately.
 Everything is configured from one shared in-game panel plus plain `.cfg` files.
 
 ---
@@ -117,7 +117,7 @@ Everything else the model needs comes from the game itself and is read per wheel
 `FrictionPresetSand` (picked per surface), `forceCoefficient`, `camberAngle`, motor and brake torque.
 
 **Peak grip is matched to the native model**, so switching models changes *behaviour*, not how much
-grip the car has. If you want more grip, that is `GripScale` — and it is your choice, not a default.
+grip the car has. `GripScale` is the multiplier if you want to change grip itself.
 
 **The `Tires` section also shows live per-wheel telemetry:**
 
@@ -320,24 +320,22 @@ game) are gitignored. Keep them that way.
 
 ## Design notes
 
-The reasoning behind the tire model, the measured game data, the fidelity policy and the deferred
-suspension plan live in [`docs/tire-model-spec.md`](docs/tire-model-spec.md). If you are going to
-change the tire model, read §15–§19 first — they record what the game actually provides and why
-certain things were deliberately *not* added.
+The reasoning behind the tire model, the measured game data and the deferred suspension plan live in
+[`docs/tire-model-spec.md`](docs/tire-model-spec.md). If you are going to change the tire model, read
+§15–§19 first — they record what the game actually provides.
 
-Short version of the policy:
+Where the numbers come from:
 
-- **Kept exactly as the game provides it:** peak grip magnitude, slip curve shape (per tire, per
-  surface), slip units, camber input, torque input.
-- **Added, because the game has no such physics:** camber thrust, camber softening, relaxation
-  length, own wheel-spin integration, a real combined-slip friction ellipse.
-- **Deliberately not added:** rebalancing the game's own tire balance, and any control the game
-  already exposes to the player.
+- **Taken from the game:** peak grip magnitude, slip curve shape (per tire, per surface), slip units,
+  camber input, torque input.
+- **Added by this suite:** camber thrust, camber softening, relaxation length, own wheel-spin
+  integration, a real combined-slip friction ellipse.
+- **Left alone on purpose:** the game's own tire balance, and any control the game already exposes to
+  the player.
 
-That last point has already killed two ideas: an external brake bias (the game already has
-per-wheel brake strength through the brake part's `brakeforce` property) and a geometry-derived
-"off-road tires are worse on asphalt" penalty. Check for an existing mechanism before adding a new
-one.
+The last point has already dropped two ideas: an external brake bias (the game already has per-wheel
+brake strength through the brake part's `brakeforce` property) and a geometry-derived "off-road tires
+are worse on asphalt" penalty. In both cases the game already had a mechanism for it.
 
 ---
 
@@ -351,5 +349,4 @@ one.
 
 ## License
 
-See `LICENSE` if present; otherwise treat the repository as the author's own work, with the
-third-party attribution above.
+No license file is included yet.
