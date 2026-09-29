@@ -37,9 +37,9 @@ namespace ScrewTweaks.ECU
                 nameof(AidMode.Native),
                 "Traction control algorithm. Native = game default, Off = no TCS.");
 
-            Aids.AbsTargetConfig = Config.Bind("Abs", "TargetSlip", 0.20f, "Slip ratio the progressive ABS aims to hold.");
-            Aids.AbsGainConfig = Config.Bind("Abs", "Gain", 4f, "How hard the brake is cut as slip exceeds the target.");
-            Aids.AbsFloorConfig = Config.Bind("Abs", "Floor", 0.40f, "Minimum fraction of the requested brake kept while slipping (0..1).");
+            Aids.AbsTargetConfig = Config.Bind("Abs", "TargetSlip", 0.12f, "Slip ratio the progressive ABS aims to hold. The game's asphalt curve peaks at ~0.125, so a target above that is already past peak grip.");
+            Aids.AbsGainConfig = Config.Bind("Abs", "Gain", 6f, "How hard the brake is cut as slip exceeds the target. At gain 6 a slip of ~0.29 releases the brake fully.");
+            Aids.AbsFloorConfig = Config.Bind("Abs", "Floor", 0.10f, "Minimum fraction of the requested brake kept while slipping (0..1). Lower releases more, like a real ABS.");
 
             Aids.TractionTargetConfig = Config.Bind("Traction", "TargetSlip", 0.12f, "Slip ratio the progressive traction control aims to hold.");
             Aids.TractionGainConfig = Config.Bind("Traction", "Gain", 3f, "How hard the drive torque is cut as slip exceeds the target.");

@@ -118,8 +118,14 @@ namespace ScrewTweaks.Physics.Tires
             // --- output (game sign conventions: +forward, sideFriction applies along -sidewaysDir) ---
             wc.forwardFriction.force = fx;
             wc.sideFriction.force = fy;
-            wc.forwardFriction.slip = kappa;
-            wc.sideFriction.slip = alpha;
+
+            // The slip fields are the game's own feedback channel: the native model fills them with
+            // the kinematic slip, and MechanicalOutputWheel's ABS/TCS read them back. Publishing the
+            // relaxed value here makes the aids react a relaxation length late, which locks the
+            // wheels before the ABS responds. So they get the kinematic slip; the relaxed value
+            // stays internal (and is what the forces were computed from).
+            wc.forwardFriction.slip = kappaSs;
+            wc.sideFriction.slip = alphaSs;
 
             bool hasIdentity = TireIdentities.TryGet(wc, out var identity);
 

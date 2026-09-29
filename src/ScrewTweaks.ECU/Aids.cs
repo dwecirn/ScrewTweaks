@@ -97,9 +97,9 @@ namespace ScrewTweaks.ECU
         internal static AidMode Abs => Parse(AbsConfig?.Value);
         internal static AidMode Traction => Parse(TractionConfig?.Value);
 
-        internal static float AbsTarget => AbsTargetConfig?.Value ?? 0.20f;
-        internal static float AbsGain => AbsGainConfig?.Value ?? 4f;
-        internal static float AbsFloor => AbsFloorConfig?.Value ?? 0.40f;
+        internal static float AbsTarget => AbsTargetConfig?.Value ?? 0.12f;
+        internal static float AbsGain => AbsGainConfig?.Value ?? 6f;
+        internal static float AbsFloor => AbsFloorConfig?.Value ?? 0.10f;
 
         internal static float TractionTarget => TractionTargetConfig?.Value ?? 0.12f;
         internal static float TractionGain => TractionGainConfig?.Value ?? 3f;
