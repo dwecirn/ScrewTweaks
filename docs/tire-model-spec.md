@@ -5,13 +5,18 @@ Drivers' driving experience in a sim-racing direction. The tire model is one of 
 lives in a replaceable slot: what is documented here is the implementation that happens to ship,
 not the only one the suite accepts.
 
-> Status: the `Pacejka` model is implemented and in use. This document records the measured game
-> data and the reasoning; sections 15-19 are the current state, earlier sections are the original
-> research and are kept for context. Field names are English on purpose.
+> **Status.** Sections 15-20 are the current state. Sections 1-14 are the original research and
+> describe the PAC2002 / `.tir` route that was later **rejected**: the game supplies no `.tir`-style
+> data, so the model had to be generated from the game's own numbers instead (§15, §16). They are
+> kept because the reasoning is still useful, but do not read them as a plan. Field names are
+> English on purpose.
 
 ---
 
 ## 1. Why
+
+> Historical (see the status note above): this section predates the discovery that the game has no
+> `.tir`-like data. It is kept for the description of what the native model is missing.
 
 The game's active tire model (NWH `WheelController3D` `Friction`) is semi-empirical:
 
@@ -74,6 +79,10 @@ Do **not** run the original `Vector2.ClampMagnitude`: the model does its own com
 ---
 
 ## 3. Model: PAC2002 (MF 5.2)
+
+> Historical: this is the model that was *not* built, because its coefficients cannot be derived
+> from the game. See §16 for the model that is.
+
 
 Magic Formula:
 
@@ -208,6 +217,9 @@ with per-surface multipliers `LMUX`, `LMUY` (exposed as a slot parameter). The g
 
 ## 8. `.tir` file (TNO MF-Tyre / MF-Swift standard)
 
+> Historical: no .tir parsing was written, and none is planned. The game has no such data.
+
+
 Open text format. Sections we care about (names may vary slightly by exporter):
 
 ```
@@ -284,6 +296,9 @@ ported source and add a note in the repo (e.g. `THIRD_PARTY_NOTICES`).
 ---
 
 ## 11. Phased plan
+
+> Historical: superseded by §16 and §19. The actual sequence that was followed is in §15-§19.
+
 
 1. **Slot skeleton**: `ITireModel` + `Native` (calls original) + `Pacejka2002` stub; select via
    cfg/panel (same pattern as `ScrewTweaks.ECU`).
@@ -581,3 +596,50 @@ adjustable and the curve is used over its whole domain.
 
 Inputs stay the game's own `springforce` / `damperforce` / `progressiveness`, and defaults should
 stay close to vanilla. Deferred by the user as of 2026-09.
+
+---
+
+## 20. Deferred: Dahl standstill friction (low speed)
+
+Not implemented. Recorded here because it was the one genuinely reusable part of the original Chrono
+`ChPac02Tire` port plan (`docs/tire-model-port.md`, now removed - that plan described the rejected
+`.tir` route).
+
+What we do today for low speed is only a floor on the slip denominators (`minSpeed`) and on the
+relaxation speed. That stops the maths from blowing up, but it does not stop a stationary car from
+creeping or jittering. A bristle model does, which is why Project Chrono uses one in every handling
+model it ships.
+
+From `Chrono::Vehicle`, `ChPac02Tire::CombinedCoulombForces` - one elastic bristle per direction,
+with the Coulomb limit blended in (BSD-3, same origin as the friction ellipse in §16):
+
+```
+muscale = mu_road / mu0
+fc      = Fz * muscale
+brx_dot = vsx - sigma0 * brx * |vsx| / fc
+bry_dot = vsy - sigma0 * bry * |vsy| / fc
+Fx      = -(sigma0 * brx + sigma1 * brx_dot)
+Fy      = -(sigma0 * bry + sigma1 * bry_dot)
+```
+
+integrated implicitly (A-stable) and then clamped to the friction circle:
+
+```
+brx = (2*brx*fc + 2*fc*h*vsx - brx*h*sigma0*|vsx|) / (2*fc + h*sigma0*|vsx|)   // same for bry
+if (F.Length() > fz * muscale) { F.Normalize(); F *= fz * muscale; }
+```
+
+`h` must be the physics step. Chrono's defaults are `sigma0 = 1e5`, `sigma1 = 5e3`. The Dahl force
+is blended with the steady-state one by speed:
+
+```
+frblend = SineStep(|vx|, begin = 1.0 m/s, end = 3.0 m/s)
+F = (1 - frblend) * F_dahl + frblend * F_mf
+```
+
+The blend is the part that matters: below ~1 m/s the bristles carry the force (the car holds still
+instead of creeping), above ~3 m/s the steady-state curves do.
+
+Where it would slot in: replace the `RelaxationLength <= 0 || !hasHit` shortcut and the
+`Mathf.Max(|vx|, 3f)` floor in `PacejkaTireModel`, adding a `Brx`/`Bry` pair to `TireState`
+alongside the relaxed slips.
