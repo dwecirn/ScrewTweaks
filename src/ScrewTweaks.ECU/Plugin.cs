@@ -40,6 +40,9 @@ namespace ScrewTweaks.ECU
             Aids.AbsTargetConfig = Config.Bind("Abs", "TargetSlip", 0.20f, "Slip ratio the progressive ABS aims to hold.");
             Aids.AbsGainConfig = Config.Bind("Abs", "Gain", 4f, "How hard the brake is cut as slip exceeds the target.");
             Aids.AbsFloorConfig = Config.Bind("Abs", "Floor", 0.40f, "Minimum fraction of the requested brake kept while slipping (0..1).");
+
+            Aids.TractionTargetConfig = Config.Bind("Traction", "TargetSlip", 0.12f, "Slip ratio the progressive traction control aims to hold.");
+            Aids.TractionGainConfig = Config.Bind("Traction", "Gain", 3f, "How hard the drive torque is cut as slip exceeds the target.");
         }
 
         private void Start()
@@ -62,7 +65,12 @@ namespace ScrewTweaks.ECU
             }
 
             GUILayout.Space(10f);
-            DrawDropdown("Traction", Aids.Traction, ref _tractionOpen, SetTraction, new[] { AidMode.Native, AidMode.Off });
+            DrawDropdown("Traction", Aids.Traction, ref _tractionOpen, SetTraction, new[] { AidMode.Native, AidMode.Off, AidMode.Progressive });
+            if (Aids.Traction == AidMode.Progressive)
+            {
+                DrawSlider("  Target slip", Aids.TractionTargetConfig, 0.02f, 0.60f, "0.00");
+                DrawSlider("  Cut gain", Aids.TractionGainConfig, 0.5f, 12f, "0.0");
+            }
 
             GUILayout.Space(10f);
             GUILayout.Label("Changes apply live and are saved to the config file.");

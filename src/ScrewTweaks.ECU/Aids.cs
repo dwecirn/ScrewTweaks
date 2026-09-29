@@ -29,6 +29,34 @@ namespace ScrewTweaks.ECU
         float Apply(in AidContext ctx, float desiredBrake);
     }
 
+    /// <summary>Drive-side electronic aid slot (traction control).</summary>
+    internal interface IDriveAid
+    {
+        float Apply(in AidContext ctx, float desiredTorque);
+    }
+
+    /// <summary>
+    /// Proportional traction control. Below the target slip the requested torque is passed through;
+    /// above it the torque is scaled down by the slip error, so the wheel is held near the peak of
+    /// the longitudinal curve instead of spinning. This matters much more under a real combined-slip
+    /// model than under the native one: a spinning wheel loses lateral grip in proportion to its
+    /// longitudinal slip, which is what makes the car snap into oversteer on power.
+    /// </summary>
+    internal sealed class ProgressiveTraction : IDriveAid
+    {
+        public float Apply(in AidContext ctx, float desiredTorque)
+        {
+            if (desiredTorque == 0f) return desiredTorque;
+
+            float target = Aids.TractionTarget;
+            float slip = Mathf.Abs(ctx.ForwardSlip);
+            if (slip <= target) return desiredTorque;
+
+            float factor = 1f - (slip - target) * Aids.TractionGain;
+            return desiredTorque * Mathf.Clamp01(factor);
+        }
+    }
+
     /// <summary>
     /// Proportional ABS. Below the target slip it applies the full brake; above it, the brake is
     /// scaled down by the slip error but never below <see cref="Aids.AbsFloor"/>, so deceleration
@@ -60,7 +88,11 @@ namespace ScrewTweaks.ECU
         internal static ConfigEntry<float>? AbsGainConfig;
         internal static ConfigEntry<float>? AbsFloorConfig;
 
+        internal static ConfigEntry<float>? TractionTargetConfig;
+        internal static ConfigEntry<float>? TractionGainConfig;
+
         internal static readonly ProgressiveAbs ProgressiveAbs = new ProgressiveAbs();
+        internal static readonly ProgressiveTraction ProgressiveTraction = new ProgressiveTraction();
 
         internal static AidMode Abs => Parse(AbsConfig?.Value);
         internal static AidMode Traction => Parse(TractionConfig?.Value);
@@ -68,6 +100,9 @@ namespace ScrewTweaks.ECU
         internal static float AbsTarget => AbsTargetConfig?.Value ?? 0.20f;
         internal static float AbsGain => AbsGainConfig?.Value ?? 4f;
         internal static float AbsFloor => AbsFloorConfig?.Value ?? 0.40f;
+
+        internal static float TractionTarget => TractionTargetConfig?.Value ?? 0.12f;
+        internal static float TractionGain => TractionGainConfig?.Value ?? 3f;
 
         internal static AidMode Parse(string? value)
             => value == nameof(AidMode.Off) ? AidMode.Off

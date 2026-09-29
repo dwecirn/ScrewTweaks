@@ -34,17 +34,36 @@ namespace ScrewTweaks.ECU
         {
             try
             {
-                if (Aids.Abs != AidMode.Progressive) return;
                 if (Skip(__instance.DrivingCar) || InAir(__instance.UseNWH, __instance.WheelController)) return;
 
-                float raw = WheelBrakeRef(__instance);
-                if (raw <= 0f) return;
+                float brake = WheelBrakeRef(__instance);
+                var ctx = Context(__instance, brake);
 
-                float modified = Aids.ProgressiveAbs.Apply(Context(__instance, raw), raw);
-                if (Mathf.Approximately(modified, raw)) return;
+                // --- brake channel (ABS) ---
+                if (Aids.Abs == AidMode.Progressive && brake > 0f)
+                {
+                    float modified = Aids.ProgressiveAbs.Apply(ctx, brake);
+                    if (!Mathf.Approximately(modified, brake))
+                    {
+                        WheelBrakeRef(__instance) = modified;
+                        ApplyBrake(__instance, modified);
+                    }
+                }
 
-                WheelBrakeRef(__instance) = modified;
-                ApplyBrake(__instance, modified);
+                // --- drive channel (traction) ---
+                if (Aids.Traction == AidMode.Progressive)
+                {
+                    float torque = __instance.currentTorque;
+                    if (torque != 0f)
+                    {
+                        float modified = Aids.ProgressiveTraction.Apply(ctx, torque);
+                        if (!Mathf.Approximately(modified, torque))
+                        {
+                            __instance.currentTorque = modified;
+                            ApplyTorque(__instance, modified);
+                        }
+                    }
+                }
             }
             catch { }
         }
@@ -149,6 +168,19 @@ namespace ScrewTweaks.ECU
             else if (wheel.WheelCollider != null)
             {
                 wheel.WheelCollider.brakeTorque = brake;
+            }
+        }
+
+        // Mirrors how the game pushes the computed drive torque to the wheel.
+        private static void ApplyTorque(MechanicalOutputWheel wheel, float torque)
+        {
+            if (wheel.UseNWH)
+            {
+                if (wheel.WheelController != null) wheel.WheelController.motorTorque = torque;
+            }
+            else if (wheel.WheelCollider != null)
+            {
+                wheel.WheelCollider.motorTorque = torque;
             }
         }
     }

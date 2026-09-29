@@ -436,3 +436,30 @@ torque `Mz`, Dahl low-speed bristles, per-surface μ scaling beyond `BCDE`, `.ti
 Rejected: porting `ChPac02Tire` verbatim — it needs `.tir` coefficients the game does not have.
 `ChFialaTire` stays excluded (Chrono docs: assumes zero camber).
 
+
+---
+
+## 17. Diagnosis from the first telemetry recording (2026-09)
+
+Per-wheel telemetry (F9 -> `BepInEx/ScrewTweaks.tire-telemetry.csv`, 30 s of mixed driving).
+
+**Front axle:** slip ratio is ~0 (86% of samples within +/-0.02), lateral utilisation reaches
+~0.89-0.91 of `sideMax`. The front is therefore *not* being robbed of grip by combined slip - it is
+simply saturated, and it spends a large fraction of the time at 8-22 deg slip angle.
+
+**Rear axle:** slip ratio is 0.12-0.44 (positive = spinning) for most samples and lateral
+utilisation is capped at ~0.5-0.7 of `sideMax`. The ADAMS ellipse correctly converts that drive slip
+into a large lateral loss, which reproduces the "cannot hold power, snaps into oversteer" symptom.
+
+**Root cause - torque capacity mismatch.** The native model bounds the wheel-spin reaction with
+`num7 = loadCoefficient * D * forceCoefficient * 0.8` used as a *torque*
+(`angularVelocity -= num8 / inertia * dt`), and only afterwards converts to force via
+`force = num8 / radius` (which is then clamped to `loadCoefficient`). Its implied wheel torque
+capacity is therefore `~1.0 * loadCoefficient`. Our model is unit-consistent
+(`torque = Fx * radius`), giving `0.925 * loadCoefficient * 1.35 * radius ~= 0.38 * loadCoefficient`
+- about **2.6x less torque capacity** than the native. The game's drivetrain was calibrated against
+the native number, so under real tire physics the rear wheels spin almost continuously.
+
+**Resolution:** do not touch tyre data. Add a traction-control algorithm at the drive-torque layer
+(`ScrewTweaks.ECU` -> `ProgressiveTraction`), holding the slip ratio near the longitudinal peak so
+the rear keeps its lateral grip.
