@@ -34,6 +34,16 @@ namespace ScrewTweaks.Physics.Suspension
         private const float RateRatio = 6f;
 
         /// <summary>
+        /// Multiplier on the wheel part's mass to get the corner's unsprung mass.
+        ///
+        /// The game's `Mass` is the wheel on its own - tyre and rim. A real corner also carries the hub,
+        /// the brake disc and caliper and half the suspension arms, so the unsprung mass is roughly
+        /// twice what the wheel weighs, and the ratio between the two is what sets how prone the wheel
+        /// is to hopping: too light, and a bump throws it clear of the ground.
+        /// </summary>
+        internal const float CornerMassFactor = 2f;
+
+        /// <summary>
         /// Tyre vertical damping as a fraction of critical. Measured tyre vertical damping ratios sit
         /// around 0.1 to 0.3 - higher than most people expect, because the tyre is what has to control
         /// wheel hop: the damper is above the wheel's own frequency, and a digressive one has already
@@ -47,6 +57,13 @@ namespace ScrewTweaks.Physics.Suspension
         /// <summary>Largest omega*dt a substep may reach. Explicit integration is unstable above 2;
         /// keeping it well under 1 leaves the damping room to work without ringing.</summary>
         private const float MaxOmegaDt = 0.5f;
+
+        /// <summary>The unsprung mass for one wheel: the wheel part, plus the rest of the corner.</summary>
+        internal static float UnsprungMass(WheelController wc)
+        {
+            float wheel = wc?.wheel != null ? wc.wheel.mass : 0f;
+            return Mathf.Max(wheel * CornerMassFactor, 0.5f);
+        }
 
         /// <summary>
         /// The wheel rate the suspension presents at its nominal compression, in [N/m]. This is the

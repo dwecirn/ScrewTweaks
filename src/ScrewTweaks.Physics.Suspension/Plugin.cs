@@ -163,6 +163,8 @@ namespace ScrewTweaks.Physics.Suspension
                     "下拉下限 {0}：阻尼最多可以把车身往下拉到“该轮静态载荷 × {0}”。"),
                 ("Raise it only if rebound feels like it runs out near full extension.",
                     "只有在感觉“回弹快伸到底时没劲”时才需要调高它。"),
+                ("The game's pull-down clamp is not applied while a wheel has vertical freedom: the tyre's one-sided force is the bound.",
+                    "轮子有垂向自由度时不使用游戏的钳位：真正的边界是轮胎只能推、不能拉的单侧力。"),
                 ("Grounded wheels (each row is one physics step, live):", "接地轮（每行是一个物理步，实时）："),
                 ("  wheel              comp     C Ns/m   dir  v m/s    damper N    game N   spring N",
                     "  轮子               压缩   C Ns/m   方向  v m/s     阻尼 N     原版 N    弹簧 N"),
@@ -195,6 +197,8 @@ namespace ScrewTweaks.Physics.Suspension
                     "引き下げ下限 {0}：ダンパーはボディを“そのホイールの静的荷重 × {0}”まで下へ引けます。"),
                 ("Raise it only if rebound feels like it runs out near full extension.",
                     "伸び切る手前で伸張が効かないと感じたときだけ上げてください。"),
+                ("The game's pull-down clamp is not applied while a wheel has vertical freedom: the tyre's one-sided force is the bound.",
+                    "ホイールに上下の自由度があるときは、ゲームのクランプを適用しません。境界になるのは、押すだけで引けないタイヤの片側の力です。"),
                 ("Grounded wheels (each row is one physics step, live):", "接地中のホイール（各行が 1 物理ステップ、ライブ）:"),
                 ("  wheel              comp     C Ns/m   dir  v m/s    damper N    game N   spring N",
                     "  ホイール           圧縮   C Ns/m   方向  v m/s   ダンパー N   ゲーム N   スプリング N"),
@@ -220,15 +224,23 @@ namespace ScrewTweaks.Physics.Suspension
                 DrawSlider(Loc.T("Low-speed gain"), DamperTuning.LowSpeedGainConfig, 0.5f, 3f, "0.00");
                 DrawSlider(Loc.T("Knee velocity"), DamperTuning.KneeVelocityConfig, 0.01f, 0.5f, "0.00");
                 DrawSlider(Loc.T("Blow-off slope"), DamperTuning.BlowOffRatioConfig, 0f, 1f, "0.00");
-                DrawSlider(Loc.T("Pull-down floor"), DamperTuning.ReboundFloorConfig, 0f, 1.5f, "0.00");
+                if (TireVerticalModels.IsNative)
+                    DrawSlider(Loc.T("Pull-down floor"), DamperTuning.ReboundFloorConfig, 0f, 1.5f, "0.00");
 
                 GUILayout.Space(6f);
                 GUILayout.Label(Loc.T("Gain 1.00 + blow-off 1.00 + ratio 1.00 = exactly the game."));
-                GUILayout.Label(DamperTuning.ReboundFloor <= 0f
-                    ? Loc.T("Pull-down floor 0 = the game's clamp: the damper never pulls the body down.")
-                    : Loc.Tf("Pull-down floor {0}: the damper may pull the body down by up to that fraction of the wheel's static load.",
-                        DamperTuning.ReboundFloor));
-                GUILayout.Label(Loc.T("Raise it only if rebound feels like it runs out near full extension."));
+                if (TireVerticalModels.IsNative)
+                {
+                    GUILayout.Label(DamperTuning.ReboundFloor <= 0f
+                        ? Loc.T("Pull-down floor 0 = the game's clamp: the damper never pulls the body down.")
+                        : Loc.Tf("Pull-down floor {0}: the damper may pull the body down by up to that fraction of the wheel's static load.",
+                            DamperTuning.ReboundFloor));
+                    GUILayout.Label(Loc.T("Raise it only if rebound feels like it runs out near full extension."));
+                }
+                else
+                {
+                    GUILayout.Label(Loc.T("The game's pull-down clamp is not applied while a wheel has vertical freedom: the tyre's one-sided force is the bound."));
+                }
             }
 
             GUILayout.Space(16f);

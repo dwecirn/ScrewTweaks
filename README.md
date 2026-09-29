@@ -229,9 +229,14 @@ the same velocity, so the difference is visible while driving.
 rebound force larger than the spring force is truncated to nothing and the damper can never pull the body
 down. That stops a car being sucked into the ground, but it also means rebound damping loses its
 authority exactly when the suspension is near full extension — which is when it matters most, over a
-crest. Since the wheel has no vertical freedom in this engine, the damper is the only thing that can
-stand in for the wheel's inertia. `0` keeps the game's clamp. It is off by default because it changes the
-game's integrator rather than just the damper law.
+crest. `0` keeps the game's clamp, and with no vertical model selected the damper is the only thing that
+can stand in for the wheel's inertia, so raising it is the only way to get that authority back.
+
+**With a vertical model selected it is not applied at all.** The clamp exists because a rigid wheel has no
+inertia, so a damper pulling the body down has nothing behind it; once the wheel can hang, that pull is
+real and the tyre's one-sided force is the bound. Leaving the clamp in place throws away the entire rebound
+half of every wheel hop, which is what made the wheels bounce twice off a small bump no matter how hard the
+damper was set.
 
 #### The wheel's vertical freedom
 
@@ -245,16 +250,18 @@ damper against the ground, with the wheel hanging on the suspension above it.
 
 **Nothing else to set — the tyre's numbers are derived from the parts you already fitted:**
 
-- **Unsprung mass** — the wheel part's own mass, which the game otherwise only used for rotational
-  inertia.
+- **Unsprung mass** — the wheel part's own mass × 2. The game's number is the wheel alone; a real corner
+  also carries the hub, the brake and half the suspension arms, and how heavy the corner is decides
+  whether a bump throws the wheel clear of the ground.
 - **Tyre stiffness** — 6 × the suspension's wheel rate (`maxForce / maxLength`). Real cars put a tyre at 5
   to 10 times the wheel rate, so a heavy car with long travel gets a soft big tyre and a go-kart a stiff
   small one, with no car-specific constant anywhere.
 - **Tyre damping** — 0.2 of critical, in the middle of the measured range for tyres (0.1 to 0.3).
 - **Substep count** — computed from how fast the wheel hop is, so it cannot be made unstable.
 
-On the default car that comes out at about 200 kN/m on a 20 kg wheel: a 12 mm static deflection and a
-17 Hz wheel hop, both close to a real corner. The panel prints what each wheel actually ended up with.
+On the default car that comes out at about 200 kN/m on a 40 kg corner: a 13 mm static deflection and an
+11 Hz wheel hop, both of which are what a real corner does. The panel prints what each wheel actually
+ended up with.
 
 | Setting | Default | Meaning |
 |---|---|---|

@@ -124,7 +124,7 @@ namespace ScrewTweaks.Physics.Suspension
             state.LastGroundLength = groundLength;
             state.HasLastGround = true;
 
-            float unsprungMass = Mathf.Max(wc.wheel.mass, 0.5f);
+            float unsprungMass = TireVerticalTuning.UnsprungMass(wc);
             int substeps = TireVerticalTuning.SubstepsFor(wc, unsprungMass, dt);
             float sub = dt / substeps;
             float gravityDown = Vector3.Dot(UnityEngine.Physics.gravity, -axis);
@@ -194,11 +194,14 @@ namespace ScrewTweaks.Physics.Suspension
             state.Deflection = deflection;
             state.Substeps = substeps;
 
-            // The clamp is about how far the damper may pull the body down; a travel stop is a
-            // constraint, not a damper, and it is bounded by the tyre force and the unsprung weight
-            // anyway - so it is added outside the clamp rather than being thrown away by it.
-            float applied = Mathf.Clamp(suspensionTotal, -DamperSlot.ReboundFloorFor(wc), float.PositiveInfinity)
-                            + stopReaction;
+            // No rebound clamp here, deliberately. The game's `clamp(spring + damper, 0, +inf)` exists
+            // because a rigid wheel has no inertia, so a damper pulling the body down would have nothing
+            // behind it. With a wheel that can hang, a negative suspension force is the real reaction to
+            // the wheel's mass, and the bound is the tyre's own one-sided force - it can push, never
+            // pull. Leaving the clamp in place would silently throw away the whole rebound half of every
+            // wheel hop, which is what made the wheels bounce twice off a small bump no matter how hard
+            // the damper was set.
+            float applied = suspensionTotal + stopReaction;
 
             Vector3 normal = wc.wheelHit.raycastHit.normal;
             float cos = Mathf.Cos(Vector3.Angle(-wc.wheel.up, -normal) * Mathf.Deg2Rad);
@@ -271,7 +274,7 @@ namespace ScrewTweaks.Physics.Suspension
         {
             if (wc == null || !States.TryGetValue(wc, out var state) || !state.Ready) return null;
             return (state.Length, state.Deflection, state.TireForce,
-                TireVerticalTuning.Frequency(wc, Mathf.Max(wc.wheel.mass, 0.5f)), state.Substeps);
+                TireVerticalTuning.Frequency(wc, TireVerticalTuning.UnsprungMass(wc)), state.Substeps);
         }
     }
 }

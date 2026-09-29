@@ -145,9 +145,10 @@ that, and the per-platform value lives in a ScriptableObject the game logs as `S
 - and 0.005 s in multiplayer.
 
 A real tire is stiff, so the unsprung mode is fast: `omega = sqrt(k/m)`. The shipped stiffness - 6x the
-suspension's wheel rate - puts the default car at about 17 Hz, and the same rule on a light wheel with a
-stiff small suspension reaches 40 Hz and beyond. Explicit integration is only stable below
-`omega*dt = 2`, which at 50 Hz means 15.9 Hz, so anything past the default would blow up.
+suspension's wheel rate - puts the default car at about 11 Hz, which is where a real car's wheel hop sits,
+and the same rule on a light wheel with a stiff short-travel suspension reaches 30 Hz and beyond. Explicit
+integration is only stable below `omega*dt = 2`, which at 50 Hz means 15.9 Hz, so most of the range would
+blow up.
 
 That is why the substep count is not a setting: `TireVerticalTuning.SubstepsFor` computes it from the
 wheel's own `omega*dt` and only ever raises it. The stiffness itself is free to be whatever the part data
@@ -219,6 +220,12 @@ the wheel's nominal static load:
 model is selected. It is off by default: it changes the game's integrator semantics, not just the damper
 law, and it should only be turned up once rebounds are felt to run out of authority at the top of travel.
 
+**It is not applied at all while a vertical model is selected** (section 5.5). The clamp exists because a
+rigid wheel has no inertia, so a damper pulling the body down would have nothing behind it. Once the wheel
+can hang, a negative suspension force is the real reaction to the wheel's mass and the bound is the tyre's
+own one-sided force. Leaving it in place throws away the entire rebound half of every wheel hop, which no
+amount of damper setting can recover.
+
 The nominal static load is `maxForce * forceCurve(0.55)` - the spring force at the compression the game's
 own scaling aims for (section 2).
 
@@ -275,7 +282,7 @@ Everything the `Linear` model needs is derived, and none of it is a setting:
 
 | Quantity | Where it comes from |
 |---|---|
-| Unsprung mass | the wheel part's own `Mass`, which the game otherwise only used for rotational inertia |
+| Unsprung mass | the wheel part's own `Mass` times 2. The game's number is the wheel on its own; a real corner also carries the hub, the brake and half the arms, and how heavy the corner is relative to the tyre is what decides whether a bump throws the wheel clear of the ground |
 | Tyre stiffness | 6 x the suspension's wheel rate, taken as `spring.maxForce / spring.maxLength` |
 | Tyre damping | 0.2 of critical |
 | Substep count | computed from `omega * dt` in `SubstepsFor`, so it cannot be made unstable |
@@ -284,9 +291,17 @@ Everything the `Linear` model needs is derived, and none of it is a setting:
 a tyre's vertical rate at roughly 5 to 10 times the wheel rate, which is what keeps the unsprung mode
 clear of the body mode. Expressing it that way means the tyre scales with the car exactly the way the
 game's springs already do - a heavy car with long travel gets a soft big tyre, a go-kart a stiff small
-one - with no car-specific constant anywhere. On the default car it works out at about 200 kN/m on a
-20 kg wheel: a 12 mm static deflection and a 17 Hz wheel hop, both within a stone's throw of a real
-corner.
+one - with no car-specific constant anywhere. Together with the corner mass it lands the default car at
+about 200 kN/m on a 40 kg corner: a 13 mm static deflection and an 11 Hz wheel hop, both of which are
+what a real corner does.
+
+**And the game's rebound clamp is not applied here at all.** That is the other half of the wheel hop
+story. `clamp(spring + damper, 0, +inf)` means a damper pulling the body down is thrown away whenever the
+spring force is small - and during a hop the spring is weak exactly at the top of the excursion, which is
+when the damper is the only thing left that could stop the wheel coming back down. The result was wheels
+that bounced twice off a small bump however hard the damper was set, because only the compression half of
+each hop was ever damped. The clamp has no purpose once the wheel has inertia: the tyre's one-sided force
+is the real bound.
 
 An earlier revision of this shipped three of these as sliders, and got the damping wrong at the same
 time: 0.07 is a *suspension* damping ratio, not a tyre one. That is what made the wheels visibly hop for
@@ -318,9 +333,10 @@ Specifically:
   `Set fixed timestep to ...`, and the panel's summary line prints the value it is actually using.
 - **The vertical model.** With `TireVertical/Model = Linear` the panel prints each wheel's deflection, its
   tyre force and the wheel hop frequency it ended up with. On the default car the deflection should settle
-  around 12 mm - about `staticLoad / stiffness` - and the frequency should read 16-17 Hz. Neither should
+  around 13 mm - about `staticLoad / stiffness` - and the frequency should read 11 to 12 Hz. Neither should
   grow: `SubstepsFor` is supposed to have made that impossible, so growth would be a bug rather than a
-  setting. A wheel that is genuinely off the ground should read a negative deflection.
+  setting. A wheel that is genuinely off the ground should read a negative deflection, and after a normal
+  bump it should be back on the ground within about one hop, not two or three.
 
 ## 7. Deferred
 
