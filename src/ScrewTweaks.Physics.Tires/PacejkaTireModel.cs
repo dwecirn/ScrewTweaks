@@ -119,6 +119,8 @@ namespace ScrewTweaks.Physics.Tires
             wc.forwardFriction.slip = kappa;
             wc.sideFriction.slip = alpha;
 
+            bool hasIdentity = TireIdentities.TryGet(wc, out var identity);
+
             TireTelemetry.Report(wc, new WheelSample
             {
                 Name = wc.gameObject.name,
@@ -135,6 +137,9 @@ namespace ScrewTweaks.Physics.Tires
                 Omega = omega,
                 Radius = radius,
                 Sigma = parameters.SigmaA,
+                HasIdentity = hasIdentity,
+                TireType = hasIdentity ? identity.Type : PartType.NONE,
+                TireGrip = hasIdentity ? identity.Grip : 0f,
                 SlipXk = kappa,
                 SlipYs = Mathf.Sin(alpha),
             });

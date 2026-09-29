@@ -21,6 +21,9 @@ namespace ScrewTweaks.Physics.Tires
         public float Omega;
         public float Radius;
         public float Sigma;
+        public bool HasIdentity;
+        public PartType TireType;
+        public float TireGrip;
         public float SlipXk;   // slip-vector share used by the combined-slip model
         public float SlipYs;
     }
