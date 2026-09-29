@@ -19,7 +19,7 @@ namespace ScrewTweaks.Physics.Suspension
         public const string Version = PluginVersion.Value;
     }
 
-    [BepInDependency(ScrewTweaks.Panel.PluginInfo.GUID)]
+    [BepInDependency(ScrewTweaks.Panel.PluginInfo.GUID, ScrewTweaks.Panel.PluginInfo.Version)]
     [BepInPlugin(PluginInfo.GUID, PluginInfo.Name, PluginInfo.Version)]
     public class Plugin : BaseUnityPlugin
     {
@@ -77,11 +77,72 @@ namespace ScrewTweaks.Physics.Suspension
 
         private void Start()
         {
+            Localize();
+
             Init("damper models", DamperModels.Init);
             Init("suspension patch", () => Harmony.CreateAndPatchAll(typeof(DamperSlot), PluginInfo.GUID));
 
             PanelHost.Register("Suspension", DrawSection);
             Logger.LogInfo($"[{PluginInfo.Name}] version {PluginInfo.Version} loaded (model: {DamperModels.Current?.Name ?? "none"}).");
+        }
+
+        /// <summary>Panel strings. Model names and units are identifiers and stay as they are.</summary>
+        private static void Localize()
+        {
+            // Keyed off the models' own Description values, so a translation can never drift away from
+            // the string it is meant to translate.
+            string n = new NativeDamperModel().Description;
+            string d = new DigressiveDamper().Description;
+
+            Loc.Add(PanelLanguage.ChineseSimplified,
+                ("Suspension", "悬挂"),
+                ("Damper model: {0}", "阻尼模型：{0}"),
+                (n, "游戏自带的阻尼，未改动：力 = 系数 × |速度|，压缩与回弹用同一个系数，没有卸压。"),
+                (d, "压缩/回弹分离 + 卸压曲线。慢速时更硬、冲击时更软，所以车身受控而路缘石不颠。把滑条调回去即可复刻游戏的线性阻尼。"),
+                ("Rebound / bump", "回弹 / 压缩"),
+                ("Low-speed gain", "低速增益"),
+                ("Knee velocity", "拐点速度"),
+                ("Blow-off slope", "卸压斜率"),
+                ("Pull-down floor", "下拉下限"),
+                ("Gain 1.00 + blow-off 1.00 + ratio 1.00 = exactly the game.",
+                    "增益 1.00 + 卸压 1.00 + 比例 1.00 = 完全等于原版。"),
+                ("Pull-down floor 0 = the game's clamp: the damper never pulls the body down.",
+                    "下拉下限 0 = 游戏的钳位：阻尼永远不会把车身往下拉。"),
+                ("Pull-down floor {0}: the damper may pull the body down by up to that fraction of the wheel's static load.",
+                    "下拉下限 {0}：阻尼最多可以把车身往下拉到“该轮静态载荷 × {0}”。"),
+                ("Raise it only if rebound feels like it runs out near full extension.",
+                    "只有在感觉“回弹快伸到底时没劲”时才需要调高它。"),
+                ("Grounded wheels (each row is one physics step, live):", "接地轮（每行是一个物理步，实时）："),
+                ("  wheel              comp     C Ns/m   dir  v m/s    damper N    game N   spring N",
+                    "  轮子               压缩   C Ns/m   方向  v m/s     阻尼 N     原版 N    弹簧 N"),
+                ("bump", "压缩"),
+                ("reb", "回弹"),
+                ("  (no grounded wheels)", "  （没有接地的轮子）"));
+
+            Loc.Add(PanelLanguage.Japanese,
+                ("Suspension", "サスペンション"),
+                ("Damper model: {0}", "ダンパーモデル: {0}"),
+                (n, "ゲーム標準のダンパーそのまま：力 = 係数 × |速度|。圧縮と伸張で同じ係数、ブローオフなし。"),
+                (d, "圧縮／伸張の分離 + ブローオフ曲線。低速では硬く、鋭い入力では軟らかく。ボディを制御しつつ縁石が突き上げません。スライダーを戻せばゲームの線形ダンパーを再現できます。"),
+                ("Rebound / bump", "伸張 / 圧縮"),
+                ("Low-speed gain", "低速ゲイン"),
+                ("Knee velocity", "ニー速度"),
+                ("Blow-off slope", "ブローオフ勾配"),
+                ("Pull-down floor", "引き下げ下限"),
+                ("Gain 1.00 + blow-off 1.00 + ratio 1.00 = exactly the game.",
+                    "ゲイン 1.00 + ブローオフ 1.00 + 比率 1.00 = ゲームと完全一致。"),
+                ("Pull-down floor 0 = the game's clamp: the damper never pulls the body down.",
+                    "引き下げ下限 0 = ゲームのクランプ：ダンパーがボディを下へ引くことはありません。"),
+                ("Pull-down floor {0}: the damper may pull the body down by up to that fraction of the wheel's static load.",
+                    "引き下げ下限 {0}：ダンパーはボディを“そのホイールの静的荷重 × {0}”まで下へ引けます。"),
+                ("Raise it only if rebound feels like it runs out near full extension.",
+                    "伸び切る手前で伸張が効かないと感じたときだけ上げてください。"),
+                ("Grounded wheels (each row is one physics step, live):", "接地中のホイール（各行が 1 物理ステップ、ライブ）:"),
+                ("  wheel              comp     C Ns/m   dir  v m/s    damper N    game N   spring N",
+                    "  ホイール           圧縮   C Ns/m   方向  v m/s   ダンパー N   ゲーム N   スプリング N"),
+                ("bump", "圧縮"),
+                ("reb", "伸張"),
+                ("  (no grounded wheels)", "  （接地しているホイールはありません）"));
         }
 
         private void Init(string what, Action action)
@@ -114,8 +175,8 @@ namespace ScrewTweaks.Physics.Suspension
         private void DrawSection()
         {
             var current = DamperModels.Current;
-            GUILayout.Label($"Damper model: {(current != null ? current.Name : "none")}");
-            if (current != null) GUILayout.Label(current.Description);
+            GUILayout.Label(Loc.Tf("Damper model: {0}", current?.Name ?? "-"));
+            if (current != null) GUILayout.Label(Loc.T(current.Description));
 
             GUILayout.Space(6f);
             if (GUILayout.Button($"{current?.Name ?? "-"} ▼", GUILayout.Width(240f)))
@@ -137,19 +198,19 @@ namespace ScrewTweaks.Physics.Suspension
             if (!DamperModels.IsNative)
             {
                 GUILayout.Space(10f);
-                DrawSlider("Rebound / bump", DamperTuning.ReboundRatioConfig, 0.5f, 4f, "0.00");
-                DrawSlider("Low-speed gain", DamperTuning.LowSpeedGainConfig, 0.5f, 3f, "0.00");
-                DrawSlider("Knee velocity", DamperTuning.KneeVelocityConfig, 0.01f, 0.5f, "0.00");
-                DrawSlider("Blow-off slope", DamperTuning.BlowOffRatioConfig, 0f, 1f, "0.00");
-                DrawSlider("Pull-down floor", DamperTuning.ReboundFloorConfig, 0f, 1.5f, "0.00");
+                DrawSlider(Loc.T("Rebound / bump"), DamperTuning.ReboundRatioConfig, 0.5f, 4f, "0.00");
+                DrawSlider(Loc.T("Low-speed gain"), DamperTuning.LowSpeedGainConfig, 0.5f, 3f, "0.00");
+                DrawSlider(Loc.T("Knee velocity"), DamperTuning.KneeVelocityConfig, 0.01f, 0.5f, "0.00");
+                DrawSlider(Loc.T("Blow-off slope"), DamperTuning.BlowOffRatioConfig, 0f, 1f, "0.00");
+                DrawSlider(Loc.T("Pull-down floor"), DamperTuning.ReboundFloorConfig, 0f, 1.5f, "0.00");
 
                 GUILayout.Space(6f);
-                GUILayout.Label("Gain 1.00 + blow-off 1.00 + ratio 1.00 = exactly the game.");
-                if (DamperTuning.ReboundFloor <= 0f)
-                    GUILayout.Label("Pull-down floor 0 = the game's clamp: the damper never pulls the");
-                else
-                    GUILayout.Label($"Pull-down floor {DamperTuning.ReboundFloor:0.00}: the damper may pull the body");
-                GUILayout.Label("body down. Raise it only if rebound feels like it runs out at the top.");
+                GUILayout.Label(Loc.T("Gain 1.00 + blow-off 1.00 + ratio 1.00 = exactly the game."));
+                GUILayout.Label(DamperTuning.ReboundFloor <= 0f
+                    ? Loc.T("Pull-down floor 0 = the game's clamp: the damper never pulls the body down.")
+                    : Loc.Tf("Pull-down floor {0}: the damper may pull the body down by up to that fraction of the wheel's static load.",
+                        DamperTuning.ReboundFloor));
+                GUILayout.Label(Loc.T("Raise it only if rebound feels like it runs out near full extension."));
             }
 
             GUILayout.Space(12f);
@@ -158,8 +219,8 @@ namespace ScrewTweaks.Physics.Suspension
 
         private void DrawWheels()
         {
-            GUILayout.Label("Grounded wheels (each row is one physics step, live):");
-            GUILayout.Label("  wheel              comp     C Ns/m   dir  v m/s    damper N    game N   spring N");
+            GUILayout.Label(Loc.T("Grounded wheels (each row is one physics step, live):"));
+            GUILayout.Label(Loc.T("  wheel              comp     C Ns/m   dir  v m/s    damper N    game N   spring N"));
 
             int shown = 0;
             try
@@ -177,7 +238,7 @@ namespace ScrewTweaks.Physics.Suspension
 
                     GUILayout.Label(
                         $"  {Label(wc),-16} {spring.compressionPercent * 100f,4:F0}%  {damper.bumpForce,8:F0}  " +
-                        $"{(bump ? "bump" : "reb ")} {spring.velocity,7:F2}  {damper.force,9:F0}  " +
+                        $"{Loc.T(bump ? "bump" : "reb"),-4} {spring.velocity,7:F2}  {damper.force,9:F0}  " +
                         $"{game,8:F0}  {spring.force,8:F0}");
                     shown++;
                     if (shown >= 12) break;
@@ -188,7 +249,7 @@ namespace ScrewTweaks.Physics.Suspension
                 // never break the panel
             }
 
-            if (shown == 0) GUILayout.Label("  (no grounded wheels)");
+            if (shown == 0) GUILayout.Label(Loc.T("  (no grounded wheels)"));
         }
 
         private static string Label(WheelController wc)

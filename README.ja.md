@@ -103,14 +103,28 @@ dotnet build ScrewTweaks.sln --no-restore -m:1 -t:ListVersions
 
 ## ゲーム内パネル
 
-**F7** でタブ式ウィンドウが開きます。各機能プラグインがタイトル付きのセクションを登録します：
+**F7** でウィンドウが開きます。タブは**左側に縦並び**です。既定では**画面右端・垂直中央**に表示され、タイトルバーでどこへでも移動できます。各機能プラグインがタイトル付きのセクションを登録します：
 
 - **ECU** — ABS とトラクションのチャンネル
 - **Tires** — タイヤモデルの選択、調整、ホイールごとのライブテレメトリ
 - **Suspension** — ダンパーモデルの選択、調整、ホイールごとのストロークと力のライブ表示
 - **Auto Shift** — より速いシフトタイミングのオン／オフ
+- **Settings** — パネル自身の設定。常に最後にあります
 
 パネルを開くとカーソルが解放されます。セクションはプラグインの読み込み順に並びます。
+
+### パネルの設定
+
+**Settings** はパネル自身のタブで、どちらの設定も `dev.dwecirn.screwtweaks.panel.cfg` に保存されます：
+
+| 設定 | 既定 | 意味 |
+|---|---|---|
+| `Panel/Side` | `Right` | パネルをどちらの端に付けるか。`Left` か `Right` |
+| `Panel/Language` | `English` | パネルの言語。`English`、`ChineseSimplified`、`Japanese` |
+
+言語はパネル自身だけでなく**すべてのセクション**に効きます。訳を用意していないプラグインのセクションは英語のままになるので、切り替えても中途半端な混在にはなりません。アルゴリズム名とモデル名は**翻訳しません**。設定ファイルに保存される文字列そのものであり、`EcuAids.Register` / `TireModels.Register` / `DamperModels.Register` に渡す名前でもあるからです。
+
+README と `.cfg` 内のコメントは言語に関係なく英語のままです。
 
 ---
 
@@ -241,6 +255,21 @@ private void DrawSection()
 ```
 
 `Start()` から `PanelHost.Register(title, draw)` を呼びます。描画コールバックはスクロールビュー内で毎フレーム呼ばれるので `GUILayout` を使ってください。同じタイトルで再登録すると、以前のコールバックが置き換わります。
+
+セクションのローカライズは、スイート本体と同じ表を使います。文字列は**英語の原文をキー**にするので、訳が無ければ読みやすい英語に戻り、1 文字列ずつ訳していけます：
+
+```csharp
+using ScrewTweaks.Panel;
+
+// Start() の中で、PanelHost.Register の隣に：
+Loc.Add(PanelLanguage.Japanese, ("hello", "こんにちは"));
+Loc.Add(PanelLanguage.ChineseSimplified, ("hello", "你好"));
+
+// タブのタイトル自体にも 1 つ足せば、タブもローカライズされます
+Loc.Add(PanelLanguage.Japanese, ("My Section", "マイセクション"));
+```
+
+描画コールバック内で `Loc.T("hello")` が訳を返し、`Loc.Tf` はフォーマット文字列を埋めます。自分の文字列以外には触れません。
 
 ### 2. タイヤモデル
 

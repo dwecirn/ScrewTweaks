@@ -103,14 +103,28 @@ dotnet build ScrewTweaks.sln --no-restore -m:1 -t:ListVersions
 
 ## 游戏内面板
 
-按 **F7** 打开带标签页的窗口。每个功能插件注册一个带标题的板块：
+按 **F7** 打开窗口，标签页在**左侧竖排**。它默认贴在**屏幕右侧、垂直居中**，拖动标题栏可以放到任何位置。每个功能插件注册一个带标题的板块：
 
 - **ECU** —— ABS 与牵引力通道
 - **Tires** —— 轮胎模型选择、调参、每轮实时遥测
 - **Suspension** —— 阻尼模型选择、调参、每轮行程与受力实时显示
 - **Auto Shift** —— 更快换挡时序的开关
+- **Settings** —— 面板自身的设置，永远在最后
 
 面板打开时会解锁鼠标。板块按插件加载顺序排列。
+
+### 面板设置
+
+**Settings** 是面板自己的标签页，两项设置都保存在 `dev.dwecirn.screwtweaks.panel.cfg`：
+
+| 设置 | 默认 | 含义 |
+|---|---|---|
+| `Panel/Side` | `Right` | 面板贴哪一边。`Left` 或 `Right` |
+| `Panel/Language` | `English` | 面板语言。`English`、`ChineseSimplified` 或 `Japanese` |
+
+语言作用于**所有板块**，不只是面板本身——某个插件的板块如果没提供译文，它就保持英文，所以切换语言不会变成半中半英的样子。算法名和模型名**不翻译**：它们就是配置文件里存的那串字符，也是传给 `EcuAids.Register` / `TireModels.Register` / `DamperModels.Register` 的字符串。
+
+README 和 `.cfg` 文件里的注释不受此影响，始终是英文。
 
 ---
 
@@ -242,6 +256,21 @@ private void DrawSection()
 ```
 
 在 `Start()` 里调用 `PanelHost.Register(title, draw)`。绘制回调每帧在一个滚动视图内被调用一次；请使用 `GUILayout`。用同一个标题再次注册会替换掉原来的回调。
+
+板块用和套件本身同一张翻译表来本地化。字符串以**英文原文为键**，所以缺译文时会退回到可读的英文，也可以一个字符串一个字符串地慢慢翻译：
+
+```csharp
+using ScrewTweaks.Panel;
+
+// 在 Start() 里，紧跟 PanelHost.Register 之后：
+Loc.Add(PanelLanguage.Japanese, ("hello", "こんにちは"));
+Loc.Add(PanelLanguage.ChineseSimplified, ("hello", "你好"));
+
+// 给标签页标题本身也加一条，标签页就是本地化的了
+Loc.Add(PanelLanguage.ChineseSimplified, ("My Section", "我的板块"));
+```
+
+之后在绘制回调里 `Loc.T("hello")` 就会返回译文，`Loc.Tf` 用来填格式化占位符。除你自己的字符串之外，别人的东西不会被碰到。
 
 ### 2. 轮胎模型
 

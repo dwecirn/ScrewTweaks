@@ -18,7 +18,7 @@ namespace ScrewTweaks.Physics.Tires
         public const string Version = PluginVersion.Value;
     }
 
-    [BepInDependency(ScrewTweaks.Panel.PluginInfo.GUID)]
+    [BepInDependency(ScrewTweaks.Panel.PluginInfo.GUID, ScrewTweaks.Panel.PluginInfo.Version)]
     [BepInPlugin(PluginInfo.GUID, PluginInfo.Name, PluginInfo.Version)]
     public class Plugin : BaseUnityPlugin
     {
@@ -76,12 +76,66 @@ namespace ScrewTweaks.Physics.Tires
         {
             // Each step is isolated: a failure in one must not cost us the panel registration
             // (that is how the Tires tab silently disappeared), and it must be logged.
+            Localize();
+
             Init("tire models", TireModels.Init);
             Init("friction slot patch", () => Harmony.CreateAndPatchAll(typeof(TireSlot), PluginInfo.GUID));
 
             PanelHost.Register("Tires", DrawSection);
             TireRecorder.Log = Logger;
             Logger.LogInfo($"[{PluginInfo.Name}] version {PluginInfo.Version} loaded (model: {TireModels.Current?.Name ?? "none"}).");
+        }
+
+        /// <summary>Panel strings. Model names, slips and units are identifiers and stay as they are.</summary>
+        private static void Localize()
+        {
+            // Keyed off the models' own Description values, so a translation can never drift away from
+            // the string it is meant to translate.
+            string g = new NativeTireModel().Description;
+            string z = new ZeroGripTireModel().Description;
+            string p = new PacejkaTireModel().Description;
+
+            Loc.Add(PanelLanguage.ChineseSimplified,
+                ("Tires", "轮胎"),
+                ("Tyre model: {0}", "轮胎模型：{0}"),
+                (g, "游戏自带的 NWH WheelController3D 摩擦力（未改动）。"),
+                (z, "轮胎力为零。车既不会加速也不会转向。"),
+                (p, "游戏 BCDE + 载荷敏感度 + 松弛长度 + ADAMS 摩擦椭圆 + 外倾推力。"),
+                ("Grip scale", "抓地力倍率"),
+                ("Camber thrust / deg", "外倾推力 / 度"),
+                ("Camber dynamics", "外倾动态"),
+                ("Combined slip", "组合滑移"),
+                ("Relaxation length", "松弛长度"),
+                ("Geometry -> peak", "几何 → 峰值"),
+                ("Tires seen (identity captured, independent of the live slots):",
+                    "已识别的轮胎（与实时槽位无关）："),
+                ("  (none yet - enter a car)", "  （暂无——先进入一辆车）"),
+                ("Live wheels ({0}: record 30s to CSV):", "实时轮子（{0}：录制 30 秒到 CSV）："),
+                ("  kappa | alpha deg | Fx/FxMax | Fy/FyMax | Fz | vx | omega",
+                    "  κ | α（度） | Fx/FxMax | Fy/FyMax | Fz | vx | ω"),
+                ("The slot replaces WheelController.FrictionUpdate;", "该槽位替换 WheelController.FrictionUpdate；"),
+                ("Native keeps the game's original friction.", "Native 保留游戏原本的摩擦力。"));
+
+            Loc.Add(PanelLanguage.Japanese,
+                ("Tires", "タイヤ"),
+                ("Tyre model: {0}", "タイヤモデル: {0}"),
+                (g, "ゲーム内蔵の NWH WheelController3D 摩擦（変更なし）。"),
+                (z, "タイヤ力はゼロ。車は加速も旋回もしません。"),
+                (p, "ゲームの BCDE + 荷重感度 + 緩和長 + ADAMS 摩擦楕円 + キャンバスラスト。"),
+                ("Grip scale", "グリップ倍率"),
+                ("Camber thrust / deg", "キャンバスラスト / 度"),
+                ("Camber dynamics", "キャンバ動特性"),
+                ("Combined slip", "複合スリップ"),
+                ("Relaxation length", "緩和長"),
+                ("Geometry -> peak", "形状 → ピーク"),
+                ("Tires seen (identity captured, independent of the live slots):",
+                    "確認済みのタイヤ（ライブスロットとは独立）:"),
+                ("  (none yet - enter a car)", "  （まだありません - 車に乗ってください）"),
+                ("Live wheels ({0}: record 30s to CSV):", "ライブホイール（{0}: 30 秒を CSV に記録）:"),
+                ("  kappa | alpha deg | Fx/FxMax | Fy/FyMax | Fz | vx | omega",
+                    "  κ | α（度） | Fx/FxMax | Fy/FyMax | Fz | vx | ω"),
+                ("The slot replaces WheelController.FrictionUpdate;", "このスロットは WheelController.FrictionUpdate を置き換えます。"),
+                ("Native keeps the game's original friction.", "Native はゲーム本来の摩擦をそのまま使います。"));
         }
 
         private void Init(string what, System.Action action)
@@ -107,10 +161,10 @@ namespace ScrewTweaks.Physics.Tires
         private void DrawSection()
         {
             var current = TireModels.Current;
-            GUILayout.Label($"Tyre model: {(current != null ? current.Name : "none")}");
+            GUILayout.Label(Loc.Tf("Tyre model: {0}", current?.Name ?? "-"));
             if (current != null)
             {
-                GUILayout.Label(current.Description);
+                GUILayout.Label(Loc.T(current.Description));
             }
 
             GUILayout.Space(6f);
@@ -133,16 +187,16 @@ namespace ScrewTweaks.Physics.Tires
             if (current is PacejkaTireModel)
             {
                 GUILayout.Space(10f);
-                DrawSlider("Grip scale", TireTuning.GripScaleConfig, 0.5f, 2f, "0.00");
-                DrawSlider("Camber thrust / deg", TireTuning.CamberThrustConfig, -0.08f, 0.08f, "0.000");
-                DrawSlider("Camber dynamics", TireTuning.CamberDynamicsConfig, 0f, 2f, "0.00");
-                DrawSlider("Combined slip", TireTuning.CombinedSlipConfig, 0f, 1f, "0.00");
-                DrawSlider("Relaxation length", TireTuning.RelaxationLengthConfig, 0f, 1.5f, "0.00");
-                DrawSlider("Geometry -> peak", TireTuning.GeometryShapeCouplingConfig, 0f, 2f, "0.00");
+                DrawSlider(Loc.T("Grip scale"), TireTuning.GripScaleConfig, 0.5f, 2f, "0.00");
+                DrawSlider(Loc.T("Camber thrust / deg"), TireTuning.CamberThrustConfig, -0.08f, 0.08f, "0.000");
+                DrawSlider(Loc.T("Camber dynamics"), TireTuning.CamberDynamicsConfig, 0f, 2f, "0.00");
+                DrawSlider(Loc.T("Combined slip"), TireTuning.CombinedSlipConfig, 0f, 1f, "0.00");
+                DrawSlider(Loc.T("Relaxation length"), TireTuning.RelaxationLengthConfig, 0f, 1.5f, "0.00");
+                DrawSlider(Loc.T("Geometry -> peak"), TireTuning.GeometryShapeCouplingConfig, 0f, 2f, "0.00");
             }
 
             GUILayout.Space(12f);
-            GUILayout.Label("Tires seen (identity captured, independent of the live slots):");
+            GUILayout.Label(Loc.T("Tires seen (identity captured, independent of the live slots):"));
             try
             {
                 SeenTypes.Clear();
@@ -155,7 +209,7 @@ namespace ScrewTweaks.Physics.Tires
                 }
 
                 if (SeenTypes.Count == 0)
-                    GUILayout.Label("  (none yet - enter a car)");
+                    GUILayout.Label(Loc.T("  (none yet - enter a car)"));
             }
             catch
             {
@@ -163,8 +217,8 @@ namespace ScrewTweaks.Physics.Tires
             }
 
             GUILayout.Space(12f);
-            GUILayout.Label($"Live wheels ({KeyBinds.Telemetry}: record 30s to CSV):");
-            GUILayout.Label("  kappa | alpha deg | Fx/FxMax | Fy/FyMax | Fz | vx | omega");
+            GUILayout.Label(Loc.Tf("Live wheels ({0}: record 30s to CSV):", KeyBinds.Telemetry));
+            GUILayout.Label(Loc.T("  kappa | alpha deg | Fx/FxMax | Fy/FyMax | Fz | vx | omega"));
             int count = TireTelemetry.Count;
             for (int i = 0; i < count; i++)
             {
@@ -180,8 +234,8 @@ namespace ScrewTweaks.Physics.Tires
             }
 
             GUILayout.Space(10f);
-            GUILayout.Label("The slot replaces WheelController.FrictionUpdate;");
-            GUILayout.Label("Native keeps the game's original friction.");
+            GUILayout.Label(Loc.T("The slot replaces WheelController.FrictionUpdate;"));
+            GUILayout.Label(Loc.T("Native keeps the game's original friction."));
         }
 
         private static float SafeRatio(float value, float max)

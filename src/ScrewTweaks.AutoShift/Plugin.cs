@@ -17,7 +17,7 @@ namespace ScrewTweaks.AutoShift
         public const string Version = PluginVersion.Value;
     }
 
-    [BepInDependency(ScrewTweaks.Panel.PluginInfo.GUID)]
+    [BepInDependency(ScrewTweaks.Panel.PluginInfo.GUID, ScrewTweaks.Panel.PluginInfo.Version)]
     [BepInPlugin(PluginInfo.GUID, PluginInfo.Name, PluginInfo.Version)]
     public class Plugin : BaseUnityPlugin
     {
@@ -36,10 +36,39 @@ namespace ScrewTweaks.AutoShift
 
         private void Start()
         {
+            Localize();
+
             AutoShiftFeature.Init(msg => Logger.LogInfo(msg));
             Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), PluginInfo.GUID);
             PanelHost.Register("Auto Shift", DrawSection);
             Logger.LogInfo($"[{PluginInfo.Name}] version {PluginInfo.Version} loaded.");
+        }
+
+        private static void Localize()
+        {
+            Loc.Add(PanelLanguage.ChineseSimplified,
+                ("Auto Shift", "自动换挡"),
+                (" Faster automatic shifting", " 更快的自动换挡"),
+                ("RPM threshold held for", "转速阈值维持时间"),
+                ("Minimum time between shifts", "两次换挡的最小间隔"),
+                ("Torque cut while engaging", "啮合时的扭矩中断"),
+                ("{0} s   (game: {1} s)", "{0} 秒   （原版 {1} 秒）"),
+                ("The box is saved to the config file and applies immediately.",
+                    "勾选会保存到配置文件，并立即生效。"),
+                ("Unticking it restores the game's own shift timing.",
+                    "取消勾选会恢复游戏自己的换挡时序。"));
+
+            Loc.Add(PanelLanguage.Japanese,
+                ("Auto Shift", "オートシフト"),
+                (" Faster automatic shifting", " オートシフトを速くする"),
+                ("RPM threshold held for", "RPM しきい値の保持時間"),
+                ("Minimum time between shifts", "シフト間の最小時間"),
+                ("Torque cut while engaging", "接続時のトルクカット"),
+                ("{0} s   (game: {1} s)", "{0} 秒   （ゲーム: {1} 秒）"),
+                ("The box is saved to the config file and applies immediately.",
+                    "チェックは設定ファイルに保存され、すぐに反映されます。"),
+                ("Unticking it restores the game's own shift timing.",
+                    "チェックを外すとゲーム本来のシフトタイミングに戻ります。"));
         }
 
         /// <summary>
@@ -58,19 +87,19 @@ namespace ScrewTweaks.AutoShift
             if (_enabled == null) return;
 
             bool enabled = _enabled.Value;
-            bool wanted = GUILayout.Toggle(enabled, " Faster automatic shifting");
+            bool wanted = GUILayout.Toggle(enabled, Loc.T(" Faster automatic shifting"));
             if (wanted != enabled)
                 _enabled.Value = wanted;
 
             GUILayout.Space(4f);
             var game = AutoShiftFeature.GameValues;
-            TimingRow("RPM threshold held for", AutoShiftFeature.FastOverThreshFor, game?.OverThreshFor);
-            TimingRow("Minimum time between shifts", AutoShiftFeature.FastShiftMinCooldownTime, game?.MinCooldown);
-            TimingRow("Torque cut while engaging", AutoShiftFeature.FastShiftDeadTime, game?.DeadTime);
+            TimingRow(Loc.T("RPM threshold held for"), AutoShiftFeature.FastOverThreshFor, game?.OverThreshFor);
+            TimingRow(Loc.T("Minimum time between shifts"), AutoShiftFeature.FastShiftMinCooldownTime, game?.MinCooldown);
+            TimingRow(Loc.T("Torque cut while engaging"), AutoShiftFeature.FastShiftDeadTime, game?.DeadTime);
 
             GUILayout.Space(10f);
-            GUILayout.Label("The box is saved to the config file and applies to every car");
-            GUILayout.Label("immediately; unticking it restores the game's own shift timing.");
+            GUILayout.Label(Loc.T("The box is saved to the config file and applies immediately."));
+            GUILayout.Label(Loc.T("Unticking it restores the game's own shift timing."));
         }
 
         /// <summary>
@@ -80,7 +109,7 @@ namespace ScrewTweaks.AutoShift
         private static void TimingRow(string label, float fast, float? game)
         {
             string value = game.HasValue
-                ? $"{fast:0.00} s   (game: {game.Value:0.00} s)"
+                ? Loc.Tf("{0} s   (game: {1} s)", fast.ToString("0.00"), game.Value.ToString("0.00"))
                 : $"{fast:0.00} s";
             GUILayout.Label($"{label}   {value}");
         }

@@ -120,14 +120,34 @@ Other keys: **F8** dumps static tire/wheel data to `BepInEx/ScrewTweaks.tire-dum
 
 ## The in-game panel
 
-Press **F7** for a tabbed window. Each feature plugin registers a titled section:
+Press **F7** for a window with the tabs down its left side. It opens against the **right edge of the
+screen, vertically centred**, and can be dragged anywhere from its title bar. Each feature plugin
+registers a titled section:
 
 - **ECU** — ABS and traction channels
 - **Tires** — tire model selection, tuning, live per-wheel telemetry
 - **Suspension** — damper model selection, tuning, live per-wheel travel and force
 - **Auto Shift** — on/off for the faster shift timing
+- **Settings** — the panel's own settings, always last
 
 The panel unlocks the cursor while open. Sections are listed in plugin load order.
+
+### Panel Settings
+
+The **Settings** tab is the panel's own, and both of its settings are saved to
+`dev.dwecirn.screwtweaks.panel.cfg`:
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `Panel/Side` | `Right` | Which screen edge the panel is anchored to. `Left` or `Right` |
+| `Panel/Language` | `English` | Panel language. `English`, `ChineseSimplified` or `Japanese` |
+
+The language applies to every section, not just the panel chrome — a section whose plugin has not
+provided translations simply stays English, so the switch is never a half-translated mess. Algorithm and
+model *names* are not translated: they are the same strings the config file stores and that
+`EcuAids.Register` / `TireModels.Register` / `DamperModels.Register` are called with.
+
+The READMEs and the comments inside the `.cfg` files stay in English regardless.
 
 ---
 
@@ -288,6 +308,24 @@ private void DrawSection()
 
 `PanelHost.Register(title, draw)` is called from your `Start()`. The draw action re-runs every frame
 inside a scroll view; use `GUILayout`. Registering the same title again replaces the action.
+
+A section is localised through the same table the suite uses. Strings are keyed by their English source,
+so a missing translation falls back to readable English and a section can be translated one string at a
+time:
+
+```csharp
+using ScrewTweaks.Panel;
+
+// in Start(), next to PanelHost.Register:
+Loc.Add(PanelLanguage.Japanese, ("hello", "こんにちは"));
+Loc.Add(PanelLanguage.ChineseSimplified, ("hello", "你好"));
+
+// add one for the tab title itself and the tab is localised too
+Loc.Add(PanelLanguage.Japanese, ("My Section", "マイセクション"));
+```
+
+`Loc.T("hello")` inside the draw action then returns the translation, and `Loc.Tf` fills in a format
+string. Nothing outside your own strings is touched.
 
 ### 2. A tire model
 

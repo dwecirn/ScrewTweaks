@@ -20,7 +20,7 @@ namespace ScrewTweaks.ECU
         public const string Version = PluginVersion.Value;
     }
 
-    [BepInDependency(ScrewTweaks.Panel.PluginInfo.GUID)]
+    [BepInDependency(ScrewTweaks.Panel.PluginInfo.GUID, ScrewTweaks.Panel.PluginInfo.Version)]
     [BepInPlugin(PluginInfo.GUID, PluginInfo.Name, PluginInfo.Version)]
     public class Plugin : BaseUnityPlugin
     {
@@ -53,34 +53,59 @@ namespace ScrewTweaks.ECU
 
         private void Start()
         {
+            Localize();
             Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), PluginInfo.GUID);
             PanelHost.Register("ECU", DrawSection);
             Logger.LogInfo($"[{PluginInfo.Name}] version {PluginInfo.Version} loaded.");
+        }
+
+        /// <summary>Panel strings. Algorithm names are identifiers and stay as they are.</summary>
+        private static void Localize()
+        {
+            Loc.Add(PanelLanguage.ChineseSimplified,
+                ("Traction", "牵引力"),
+                ("Target slip", "目标滑移率"),
+                ("Gain", "增益"),
+                ("Brake floor", "刹车下限"),
+                ("Cut gain", "削减增益"),
+                ("Changes apply live and are saved to the config file.", "改动立即生效，并保存到配置文件。"),
+                ("Other plugins can add algorithms: EcuAids.Register(...).",
+                    "其他插件可以注册算法：EcuAids.Register(...)。"));
+
+            Loc.Add(PanelLanguage.Japanese,
+                ("Traction", "トラクション"),
+                ("Target slip", "目標スリップ"),
+                ("Gain", "ゲイン"),
+                ("Brake floor", "ブレーキ下限"),
+                ("Cut gain", "カットゲイン"),
+                ("Changes apply live and are saved to the config file.", "変更は即時反映され、設定ファイルに保存されます。"),
+                ("Other plugins can add algorithms: EcuAids.Register(...).",
+                    "他のプラグインは EcuAids.Register(...) でアルゴリズムを追加できます。"));
         }
 
         private void Update() => TireDataDump.Update();
 
         private void DrawSection()
         {
-            DrawDropdown("ABS", Aids.BrakeSelection, ref _absOpen, SetAbs, Aids.BrakeNames());
+            DrawDropdown(Loc.T("ABS"), Aids.BrakeSelection, ref _absOpen, SetAbs, Aids.BrakeNames());
             if (Aids.BrakeAid != null)
             {
-                DrawSlider("  Target slip", Aids.AbsTargetConfig, 0.02f, 0.60f, "0.00");
-                DrawSlider("  Gain", Aids.AbsGainConfig, 0.5f, 12f, "0.0");
-                DrawSlider("  Brake floor", Aids.AbsFloorConfig, 0f, 0.95f, "0.00");
+                DrawSlider(Loc.T("Target slip"), Aids.AbsTargetConfig, 0.02f, 0.60f, "0.00");
+                DrawSlider(Loc.T("Gain"), Aids.AbsGainConfig, 0.5f, 12f, "0.0");
+                DrawSlider(Loc.T("Brake floor"), Aids.AbsFloorConfig, 0f, 0.95f, "0.00");
             }
 
             GUILayout.Space(10f);
-            DrawDropdown("Traction", Aids.DriveSelection, ref _tractionOpen, SetTraction, Aids.DriveNames());
+            DrawDropdown(Loc.T("Traction"), Aids.DriveSelection, ref _tractionOpen, SetTraction, Aids.DriveNames());
             if (Aids.DriveAid != null)
             {
-                DrawSlider("  Target slip", Aids.TractionTargetConfig, 0.02f, 0.60f, "0.00");
-                DrawSlider("  Cut gain", Aids.TractionGainConfig, 0.5f, 12f, "0.0");
+                DrawSlider(Loc.T("Target slip"), Aids.TractionTargetConfig, 0.02f, 0.60f, "0.00");
+                DrawSlider(Loc.T("Cut gain"), Aids.TractionGainConfig, 0.5f, 12f, "0.0");
             }
 
             GUILayout.Space(10f);
-            GUILayout.Label("Changes apply live and are saved to the config file.");
-            GUILayout.Label("Other plugins can add algorithms: EcuAids.Register(...).");
+            GUILayout.Label(Loc.T("Changes apply live and are saved to the config file."));
+            GUILayout.Label(Loc.T("Other plugins can add algorithms: EcuAids.Register(...)."));
         }
 
         private static void DrawDropdown(string label, string current, ref bool open, Action<string> onChange, List<string> modes)
@@ -113,7 +138,7 @@ namespace ScrewTweaks.ECU
         {
             if (entry == null) return;
             GUILayout.BeginHorizontal();
-            GUILayout.Label($"{label}: {entry.Value.ToString(format)}", GUILayout.Width(170f));
+            GUILayout.Label($"  {label}: {entry.Value.ToString(format)}", GUILayout.Width(190f));
             float value = GUILayout.HorizontalSlider(entry.Value, min, max, GUILayout.Width(120f));
             GUILayout.EndHorizontal();
             if (!Mathf.Approximately(value, entry.Value))
