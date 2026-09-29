@@ -11,6 +11,7 @@ namespace ScrewTweaks.Physics.Tires
     /// physics the native model is missing:
     ///
     /// - proper slip ratio / slip angle (own wheel-spin integration),
+    /// - relaxation length (transient slip, so the force builds over distance),
     /// - combined slip via the ADAMS friction ellipse,
     /// - camber thrust,
     /// - load sensitivity reused from the game (`loadGripCurve` / `maximumTireGripForce`).
@@ -23,7 +24,7 @@ namespace ScrewTweaks.Physics.Tires
         private static readonly Vector4 FallbackBcde = new Vector4(11f, 2.05f, 0.925f, 0.97f);
 
         public string Name => "Pacejka";
-        public string Description => "Game BCDE as pure-slip shape + load sensitivity + ADAMS friction ellipse + camber thrust + own wheel-spin integration.";
+        public string Description => "Game BCDE + load sensitivity + relaxation length + ADAMS friction ellipse + camber thrust.";
 
         public bool Apply(WheelController wc, float dt)
         {
@@ -47,11 +48,36 @@ namespace ScrewTweaks.Physics.Tires
             if (Mathf.Abs(omega) > 1e-5f)
                 omega -= Mathf.Sign(omega) * brakeTorque / inertia * dt;
 
-            // --- slip ratio / slip angle ---
+            // --- steady-state slip ratio / slip angle (kinematic) ---
             const float minSpeed = 0.6f;
             float denom = Mathf.Max(Mathf.Abs(vx), minSpeed);
-            float kappa = Mathf.Clamp((omega * radius - vx) / denom, -1f, 1f);
-            float alpha = Mathf.Clamp(Mathf.Atan2(vy, denom), -Mathf.PI * 0.5f + 0.01f, Mathf.PI * 0.5f - 0.01f);
+            float kappaSs = Mathf.Clamp((omega * radius - vx) / denom, -1f, 1f);
+            float alphaSs = Mathf.Clamp(Mathf.Atan2(vy, denom), -Mathf.PI * 0.5f + 0.01f, Mathf.PI * 0.5f - 0.01f);
+
+            // --- relaxation length: the tyre needs distance, not time, to build slip ---
+            var state = TireStates.Get(wc);
+            float sigma = TireTuning.RelaxationLength;
+            float kappa;
+            float alpha;
+            if (sigma <= 1e-4f || !wc.hasHit)
+            {
+                // No lag (or airborne): follow the kinematics exactly.
+                state.KappaRelaxed = kappaSs;
+                state.AlphaRelaxed = alphaSs;
+                kappa = kappaSs;
+                alpha = alphaSs;
+            }
+            else
+            {
+                // First-order lag, rate = |Vx| / sigma. Speed is floored so the slip cannot freeze
+                // at a standstill; the exponential form is stable for any step size.
+                float relaxSpeed = Mathf.Max(Mathf.Abs(vx), 3f);
+                float blend = 1f - Mathf.Exp(-relaxSpeed / sigma * dt);
+                state.KappaRelaxed += (kappaSs - state.KappaRelaxed) * blend;
+                state.AlphaRelaxed += (alphaSs - state.AlphaRelaxed) * blend;
+                kappa = state.KappaRelaxed;
+                alpha = state.AlphaRelaxed;
+            }
 
             // --- parameters from the game's data ---
             Vector4 bcde = wc.activeFrictionPreset != null ? wc.activeFrictionPreset.BCDE : FallbackBcde;
@@ -96,6 +122,8 @@ namespace ScrewTweaks.Physics.Tires
                 Name = wc.gameObject.name,
                 Kappa = kappa,
                 AlphaDeg = alpha * Mathf.Rad2Deg,
+                KappaRaw = kappaSs,
+                AlphaRawDeg = alphaSs * Mathf.Rad2Deg,
                 Fx = fx,
                 Fy = fy,
                 Fz = fz,

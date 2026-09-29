@@ -38,7 +38,7 @@ namespace ScrewTweaks.Physics.Tires
         internal static void Start()
         {
             Buffer.Clear();
-            Buffer.AppendLine("t,wheel,body,kappa,alphaDeg,Fx,Fy,Fz,vx,omega,fwdMax,sideMax");
+            Buffer.AppendLine("t,wheel,body,kappa,alphaDeg,kappaRaw,alphaRawDeg,Fx,Fy,Fz,vx,omega,fwdMax,sideMax");
             _startTime = Time.realtimeSinceStartup;
             _recording = true;
             Log?.LogInfo($"Tire telemetry recording for {MaxSeconds:F0}s...");
@@ -80,6 +80,8 @@ namespace ScrewTweaks.Physics.Tires
                 .Append(body).Append(',')
                 .Append(s.Kappa.ToString("F4", CultureInfo.InvariantCulture)).Append(',')
                 .Append(s.AlphaDeg.ToString("F2", CultureInfo.InvariantCulture)).Append(',')
+                .Append(s.KappaRaw.ToString("F4", CultureInfo.InvariantCulture)).Append(',')
+                .Append(s.AlphaRawDeg.ToString("F2", CultureInfo.InvariantCulture)).Append(',')
                 .Append(s.Fx.ToString("F0", CultureInfo.InvariantCulture)).Append(',')
                 .Append(s.Fy.ToString("F0", CultureInfo.InvariantCulture)).Append(',')
                 .Append(s.Fz.ToString("F0", CultureInfo.InvariantCulture)).Append(',')

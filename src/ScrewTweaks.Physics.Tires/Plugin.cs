@@ -40,6 +40,12 @@ namespace ScrewTweaks.Physics.Tires
                 "CombinedSlip",
                 1.0f,
                 "0 = longitudinal and lateral forces are independent, 1 = full ADAMS friction ellipse (locked/spinning wheels lose side grip).");
+
+            TireTuning.RelaxationLengthConfig = Config.Bind(
+                "Pacejka",
+                "RelaxationLength",
+                0.30f,
+                "Distance [m] the tyre needs to build up slip. Larger = softer/laggier response. 0 disables it.");
         }
 
         private void Start()
@@ -91,6 +97,7 @@ namespace ScrewTweaks.Physics.Tires
                 DrawSlider("Grip scale", TireTuning.GripScaleConfig, 0.5f, 2f, "0.00");
                 DrawSlider("Camber thrust / deg", TireTuning.CamberThrustConfig, -0.08f, 0.08f, "0.000");
                 DrawSlider("Combined slip", TireTuning.CombinedSlipConfig, 0f, 1f, "0.00");
+                DrawSlider("Relaxation length", TireTuning.RelaxationLengthConfig, 0f, 1.5f, "0.00");
             }
 
             GUILayout.Space(12f);
@@ -103,9 +110,8 @@ namespace ScrewTweaks.Physics.Tires
                     continue;
 
                 GUILayout.Label(
-                    $"{s.Name}: k={s.Kappa,6:F3} a={s.AlphaDeg,6:F1} " +
-                    $"x={SafeRatio(s.Fx, s.FxMax),4:F2} y={SafeRatio(s.Fy, s.FyMax),4:F2} " +
-                    $"Fz={s.Fz,6:F0} vx={s.Vx,6:F1} w={s.Omega,6:F1}");
+                    $"{s.Name}: k={s.Kappa,6:F3}({s.KappaRaw,6:F3}) a={s.AlphaDeg,6:F1}({s.AlphaRawDeg,6:F1}) " +
+                    $"y={SafeRatio(s.Fy, s.FyMax),4:F2} Fz={s.Fz,6:F0} vx={s.Vx,6:F1}");
             }
 
             GUILayout.Space(10f);

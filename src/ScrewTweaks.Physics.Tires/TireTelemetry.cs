@@ -10,6 +10,8 @@ namespace ScrewTweaks.Physics.Tires
         public string Name;
         public float Kappa;
         public float AlphaDeg;
+        public float KappaRaw;
+        public float AlphaRawDeg;
         public float Fx;
         public float Fy;
         public float Fz;
