@@ -2,35 +2,78 @@
 
 **English** | [中文](README.zh-CN.md) | [日本語](README.ja.md)
 
-A BepInEx mod suite for **Screw Drivers**, aimed at improving the driving experience in a
-sim-racing direction: real tire slip behaviour, driver aids built on top of it, and a few
-quality-of-life fixes.
+A BepInEx mod suite for **Screw Drivers** that rebuilds the tyre and suspension force models out of the
+game's own part data, adds a four-way damper, gives the wheel a vertical degree of freedom, and runs
+closed-loop ABS and traction control on top of it.
 
-It is built around replaceable slots rather than one fixed solution. The tire model, the ABS and
-traction algorithms and the panel are all public extension points, so the implementations that ship
-are just the ones that happen to ship — another developer can drop in their own without touching
-this code. See [Writing your own algorithm](#writing-your-own-algorithm).
+Nothing in the game's data is rebalanced. Every model reads the numbers the parts already carry —
+`FrictionPreset` B/C/D/E, `loadGripCurve`, `maximumTireGripForce`, `springforce`, `damperforce`,
+`SuspensionStiffness` — so a car behaves the way its parts say it should, and the difference between a
+street build and a race build is the difference the game already intended.
 
-The suite is split into independent plugins, so you can install, enable and tune them separately.
-Everything is configured from one shared in-game panel plus plain `.cfg` files.
+## What it changes
+
+**Tyre force comes from a slip curve.** The native model assembles its forces from NWH's hard-coded
+`WheelFrictionCurve`s and then clamps the resulting *vector* to the load coefficient, so longitudinal and
+lateral demand share one circular budget and slip is instantaneous. The shipped model evaluates a
+Pacejka-89-style Magic Formula against the game's own per-tyre, per-surface coefficients, scales the peak
+with the game's `loadGripCurve`, and integrates its own wheel spin — so drive and brake torque act on
+rotational inertia instead of on a force ceiling.
+
+**Combined slip is a friction ellipse.** The two demands share a budget shaped by the tyre's own
+longitudinal and lateral limits rather than by a circle: the ADAMS formulation, as used by Project
+Chrono's `ChPac02Tire`. A wheel past its longitudinal peak gives up lateral force by construction, which
+is what makes a locked front wash out and a locked rear rotate.
+
+**Slip is transient.** A relaxation length on both components: the tyre builds force over distance, which
+is most of where a car's sense of mass comes from at turn-in. The *kinematic* slip is published back to
+the game, so the aids and the drivetrain still see what the wheel is actually doing rather than a filtered
+version of it.
+
+**The wheel has vertical freedom.** A two-mass quarter car: unsprung mass from the wheel part, a tyre
+vertical rate and damping derived from the suspension's own wheel rate, integrated in substeps chosen from
+the ω·dt stability criterion rather than from a slider. The tyre filters sharp loads before the chassis
+sees them, and a wheel can leave the ground.
+
+**The damper is four-way.** Independent bump and rebound coefficients either side of a blow-off velocity,
+piecewise-linear and continuous at the knee, replacing the game's single symmetric coefficient. Stored on
+the suspension part, so a car carries its own setup.
+
+**ABS and traction are closed loops.** Slip-ratio targets with a gain and a floor, evaluated per wheel per
+step, with the native aid neutralised on whichever channel is being managed.
+
+That the models are replaceable is not a claim on paper: `ITireModel`, `IDamperModel`,
+`ITireVerticalModel`, `IBrakeAid`/`IDriveAid` and the panel host are all public API, and
+[Writing your own algorithm](#writing-your-own-algorithm) shows each one.
+
+## What it does not do
+
+- **It does not add grip.** Peak force matches the native model's, so what changes is behaviour, not how
+  much grip the car has. `GripScale` is there if you want to change grip itself.
+- **It does not add anti-roll bars or toe.** The suspension work polishes the spring and damper that are
+  already there.
+- **It only covers the NWH wheel backend.** The legacy wheel paths are untouched.
 
 ---
 
 ## Contents
 
+- [What it changes](#what-it-changes)
 - [Install](#install)
 - [Building from source](#building-from-source)
 - [Plugins and keys](#plugins-and-keys)
 - [The in-game panel](#the-in-game-panel)
 - [Tuning reference](#tuning-reference)
   - [Tire physics](#tire-physics)
+  - [Suspension physics](#suspension-physics)
   - [ECU](#ecu)
   - [Steering](#steering)
   - [Other plugins](#other-plugins)
 - [Writing your own algorithm](#writing-your-own-algorithm)
   - [A panel section](#1-a-panel-section)
   - [A tire model](#2-a-tire-model)
-  - [An ABS or traction algorithm](#3-an-abs-or-traction-algorithm)
+  - [A damper or tyre model](#3-a-damper-or-tyre-model)
+  - [An ABS or traction algorithm](#4-an-abs-or-traction-algorithm)
 - [Behaviour notes and gotchas](#behaviour-notes-and-gotchas)
 - [Design notes](#design-notes)
 - [Third-party](#third-party)
