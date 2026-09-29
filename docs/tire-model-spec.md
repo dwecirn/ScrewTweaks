@@ -1,9 +1,9 @@
 # Tire Model Spec
 
-Design record for the tire physics in **ScrewTweaks**, a BepInEx suite whose goal is to move
-Screw Drivers' driving experience toward sim racing. The tire model is one of the means: it replaces
-the game's NWH `WheelController3D` friction with a real slip-based model, selected per slot
-(`Native` fallback + `Pacejka`), with all inputs taken from the game's own data.
+Design record for the tire physics in **ScrewTweaks**, a BepInEx suite aimed at improving Screw
+Drivers' driving experience in a sim-racing direction. The tire model is one of the means, and it
+lives in a replaceable slot: what is documented here is the implementation that happens to ship,
+not the only one the suite accepts.
 
 > Status: the `Pacejka` model is implemented and in use. This document records the measured game
 > data and the reasoning; sections 15-19 are the current state, earlier sections are the original
