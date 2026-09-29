@@ -145,6 +145,10 @@ namespace ScrewTweaks.Physics.Tires
                 HasIdentity = hasIdentity,
                 TireType = hasIdentity ? identity.Type : PartType.NONE,
                 TireGrip = hasIdentity ? identity.Grip : 0f,
+                BcdeB = b,
+                BcdeC = c,
+                BcdeD = d,
+                BcdeE = e,
                 SlipXk = kappa,
                 SlipYs = Mathf.Sin(alpha),
             });

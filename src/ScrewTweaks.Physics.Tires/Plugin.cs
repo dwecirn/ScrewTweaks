@@ -61,8 +61,8 @@ namespace ScrewTweaks.Physics.Tires
             TireTuning.GeometryShapeCouplingConfig = Config.Bind(
                 "Pacejka",
                 "GeometryShapeCoupling",
-                0.5f,
-                "How strongly the contact patch (radius x width) moves the slip-curve peak. 1 = full brush-model geometry, 0 = the shape is purely the surface curve. Kept below 1 by default because real carcass stiffness can dominate.");
+                0.0f,
+                "How strongly the contact patch (radius x width) moves the slip-curve peak. Off by default: the game already ships per-tire asphalt/sand curves, so this is an extra on top. 1 = full brush-model geometry.");
         }
 
         private void Start()
@@ -71,7 +71,6 @@ namespace ScrewTweaks.Physics.Tires
             // (that is how the Tires tab silently disappeared), and it must be logged.
             Init("tire models", TireModels.Init);
             Init("friction slot patch", () => Harmony.CreateAndPatchAll(typeof(TireSlot), PluginInfo.GUID));
-            Init("tire identity patch", () => Harmony.CreateAndPatchAll(typeof(TireIdentityPatch), PluginInfo.GUID));
 
             Panel.Register("Tires", DrawSection);
             TireRecorder.Log = Logger;
@@ -166,7 +165,8 @@ namespace ScrewTweaks.Physics.Tires
 
                 string id = s.HasIdentity ? $"{s.TireType} g={s.TireGrip,5:F2}" : "(no id)";
                 GUILayout.Label(
-                    $"{id}  k={s.Kappa,6:F3} a={s.AlphaDeg,6:F1} y={SafeRatio(s.Fy, s.FyMax),4:F2} " +
+                    $"{id}  BCDE=({s.BcdeB,5:F1},{s.BcdeC,5:F2},{s.BcdeD,5:F2},{s.BcdeE,5:F2})  " +
+                    $"k={s.Kappa,6:F3} a={s.AlphaDeg,6:F1} y={SafeRatio(s.Fy, s.FyMax),4:F2} " +
                     $"Fz={s.Fz,6:F0} R={s.Radius,5:F2} sig={s.Sigma,4:F2} peak={s.PeakSlipScale,4:F2} " +
                     $"camber={s.CamberDeg,5:F1} camFx={s.CamberThrustForce,6:F0}");
             }
