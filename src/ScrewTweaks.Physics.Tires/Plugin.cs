@@ -50,8 +50,8 @@ namespace ScrewTweaks.Physics.Tires
             TireTuning.GeometryShapeCouplingConfig = Config.Bind(
                 "Pacejka",
                 "GeometryShapeCoupling",
-                1.0f,
-                "How strongly the contact patch (radius x width) moves the slip-curve peak. 1 = brush-model geometry, 0 = the shape is purely the surface curve. Real carcass stiffness can dominate, so tune by feel.");
+                0.5f,
+                "How strongly the contact patch (radius x width) moves the slip-curve peak. 1 = full brush-model geometry, 0 = the shape is purely the surface curve. Kept below 1 by default because real carcass stiffness can dominate.");
         }
 
         private void Start()

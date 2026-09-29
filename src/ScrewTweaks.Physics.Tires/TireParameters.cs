@@ -54,7 +54,7 @@ namespace ScrewTweaks.Physics.Tires
             // with sqrt(radius) * width. A stiffer patch reaches its peak at a smaller slip, so the
             // curve input is scaled up. This is geometry only; the carcass can dominate in reality,
             // which is why the coupling is a tunable strength (0 disables it).
-            float contactRatio = Mathf.Clamp(Mathf.Sqrt(sizeRatio) * widthRatio, 0.4f, 3f);
+            float contactRatio = Mathf.Clamp(Mathf.Sqrt(sizeRatio) * widthRatio, 0.5f, 2f);
             float peakSlipScale = Mathf.Pow(contactRatio, TireTuning.GeometryShapeCoupling);
 
             return new TireParameters(
