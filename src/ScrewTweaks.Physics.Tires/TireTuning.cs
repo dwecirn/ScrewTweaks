@@ -10,6 +10,7 @@ namespace ScrewTweaks.Physics.Tires
         internal static ConfigEntry<float>? CamberThrustConfig;
         internal static ConfigEntry<float>? CombinedSlipConfig;
         internal static ConfigEntry<float>? RelaxationLengthConfig;
+        internal static ConfigEntry<float>? GeometryShapeCouplingConfig;
 
         internal static float GripScale => GripScaleConfig?.Value ?? 1f;
         internal static float CamberThrust => CamberThrustConfig?.Value ?? 0.015f;
@@ -19,5 +20,12 @@ namespace ScrewTweaks.Physics.Tires
 
         /// <summary>Relaxation length [m]. 0 = no lag (force follows the instantaneous slip).</summary>
         internal static float RelaxationLength => RelaxationLengthConfig?.Value ?? 0.30f;
+
+        /// <summary>
+        /// How strongly the contact patch (radius x width) moves the slip-curve peak. Brush-model
+        /// geometry puts the peak earlier for a bigger patch; the carcass also matters, which we
+        /// cannot see, so this is exposed as a strength and set to 0 to disable.
+        /// </summary>
+        internal static float GeometryShapeCoupling => GeometryShapeCouplingConfig?.Value ?? 1f;
     }
 }

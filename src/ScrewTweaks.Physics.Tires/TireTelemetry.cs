@@ -21,6 +21,7 @@ namespace ScrewTweaks.Physics.Tires
         public float Omega;
         public float Radius;
         public float Sigma;
+        public float PeakSlipScale;
         public bool HasIdentity;
         public PartType TireType;
         public float TireGrip;

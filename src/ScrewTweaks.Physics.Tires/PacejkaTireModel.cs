@@ -95,8 +95,9 @@ namespace ScrewTweaks.Physics.Tires
             float sideMax = Mathf.Abs(d) * loadCoeff * wc.sideFriction.forceCoefficient;
 
             // --- pure slip (the game's BCDE is the shape; D is factored into the max) ---
-            float kappaEff = kappa * wc.forwardFriction.slipCoefficient;
-            float alphaEff = alpha * wc.sideFriction.slipCoefficient;
+            // PeakSlipScale moves where the curve peaks, per tire (contact patch geometry).
+            float kappaEff = kappa * wc.forwardFriction.slipCoefficient * parameters.PeakSlipScale;
+            float alphaEff = alpha * wc.sideFriction.slipCoefficient * parameters.PeakSlipScale;
             float fxPure = fwdMax * Mf(b, c, e, kappaEff);
             float fyPure = sideMax * Mf(b, c, e, alphaEff);
 
@@ -137,6 +138,7 @@ namespace ScrewTweaks.Physics.Tires
                 Omega = omega,
                 Radius = radius,
                 Sigma = parameters.SigmaA,
+                PeakSlipScale = parameters.PeakSlipScale,
                 HasIdentity = hasIdentity,
                 TireType = hasIdentity ? identity.Type : PartType.NONE,
                 TireGrip = hasIdentity ? identity.Grip : 0f,

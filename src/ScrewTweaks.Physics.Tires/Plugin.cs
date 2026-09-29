@@ -46,6 +46,12 @@ namespace ScrewTweaks.Physics.Tires
                 "RelaxationLength",
                 0.30f,
                 "Distance [m] the tyre needs to build up slip, at a 0.30 m wheel. Scaled per tire by its radius, so big soft tires get a longer one and small rigid ones a shorter one. 0 disables it.");
+
+            TireTuning.GeometryShapeCouplingConfig = Config.Bind(
+                "Pacejka",
+                "GeometryShapeCoupling",
+                1.0f,
+                "How strongly the contact patch (radius x width) moves the slip-curve peak. 1 = brush-model geometry, 0 = the shape is purely the surface curve. Real carcass stiffness can dominate, so tune by feel.");
         }
 
         private void Start()
@@ -98,6 +104,7 @@ namespace ScrewTweaks.Physics.Tires
                 DrawSlider("Camber thrust / deg", TireTuning.CamberThrustConfig, -0.08f, 0.08f, "0.000");
                 DrawSlider("Combined slip", TireTuning.CombinedSlipConfig, 0f, 1f, "0.00");
                 DrawSlider("Relaxation length", TireTuning.RelaxationLengthConfig, 0f, 1.5f, "0.00");
+                DrawSlider("Geometry -> peak", TireTuning.GeometryShapeCouplingConfig, 0f, 2f, "0.00");
             }
 
             GUILayout.Space(12f);
@@ -111,8 +118,8 @@ namespace ScrewTweaks.Physics.Tires
 
                 string id = s.HasIdentity ? $"{s.TireType} g={s.TireGrip,5:F2}" : "(no id)";
                 GUILayout.Label(
-                    $"{id}  k={s.Kappa,6:F3}({s.KappaRaw,6:F3}) a={s.AlphaDeg,6:F1} " +
-                    $"y={SafeRatio(s.Fy, s.FyMax),4:F2} Fz={s.Fz,6:F0} R={s.Radius,5:F2} sigma={s.Sigma,5:F2}");
+                    $"{id}  k={s.Kappa,6:F3} a={s.AlphaDeg,6:F1} " +
+                    $"y={SafeRatio(s.Fy, s.FyMax),4:F2} Fz={s.Fz,6:F0} R={s.Radius,5:F2} sig={s.Sigma,4:F2} peak={s.PeakSlipScale,4:F2}");
             }
 
             GUILayout.Space(10f);
