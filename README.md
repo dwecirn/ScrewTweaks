@@ -354,4 +354,11 @@ are worse on asphalt" penalty. In both cases the game already had a mechanism fo
 
 ## License
 
-No license file is included yet.
+BSD-3-Clause. See [`LICENSE`](LICENSE).
+
+Use, modify, redistribute and sell it, including as part of a closed-source mod. The only conditions
+are to keep the copyright notice, and not to use the author's name to endorse or promote a derived
+product without permission.
+
+The tire model ports a formula from Project Chrono, which is under the same license, so there is no
+mixed licensing to worry about.

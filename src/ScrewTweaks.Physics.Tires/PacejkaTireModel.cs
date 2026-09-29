@@ -1,5 +1,16 @@
 #nullable enable
 
+// The combined-slip friction ellipse in this file is adapted from Project Chrono:
+//
+//   PROJECT CHRONO - http://projectchrono.org
+//   Copyright (c) 2023 projectchrono.org. All rights reserved.
+//   Use of this source code is governed by a BSD-style license that can be found in the
+//   LICENSE file at http://projectchrono.org/license-chrono.txt.
+//   Source: src/chrono_vehicle/wheeled_vehicle/tire/ChPac02Tire.cpp (ChPac02Tire::CalcFxyMz)
+//   Author: Rainer Gericke
+//
+// Only the formula was ported; no Chrono code is compiled or shipped.
+
 using NWH.WheelController3D;
 using UnityEngine;
 
