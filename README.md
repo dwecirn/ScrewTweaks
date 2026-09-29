@@ -107,6 +107,7 @@ dotnet build ScrewTweaks.sln --no-restore -m:1 -t:ListVersions
 |---|---|---|
 | `ScrewTweaks.Panel` | Shared F7 panel host. No features of its own. | **F7** |
 | `ScrewTweaks.Physics.Tires` | Pluggable tire model slot (in-game selectable) | **F9** (record telemetry) |
+| `ScrewTweaks.Physics.Suspension` | Pluggable damper model slot (in-game selectable) | — |
 | `ScrewTweaks.ECU` | ABS / traction control channels | — |
 | `ScrewTweaks.Steering` | Instant Steering + Steering Limit Relax | — |
 | `ScrewTweaks.AutoShift` | Faster automatic shifting (F7 → Auto Shift) | — |
@@ -123,6 +124,7 @@ Press **F7** for a tabbed window. Each feature plugin registers a titled section
 
 - **ECU** — ABS and traction channels
 - **Tires** — tire model selection, tuning, live per-wheel telemetry
+- **Suspension** — damper model selection, tuning, live per-wheel travel and force
 - **Auto Shift** — on/off for the faster shift timing
 
 The panel unlocks the cursor while open. Sections are listed in plugin load order.
@@ -165,6 +167,47 @@ changes as you drive onto a different surface — so you can watch the per-tire 
 
 **F9** records 30 s of every wheel to `BepInEx/ScrewTweaks.tire-telemetry.csv`
 (`t, wheel, body, tire, tireGrip, BCDE, kappa, alphaDeg, kappaRaw, alphaRawDeg, Fx, Fy, Fz, vx, omega, fwdMax, sideMax, radius, sigma, peak, camberDeg, camberFx`).
+
+### Suspension physics
+
+Select a damper model in **F7 → Suspension**. The choice is remembered across sessions. `Native` leaves
+the game's own damper untouched and is the default, so installing the plugin changes nothing until you
+pick a model.
+
+The spring is deliberately not touched — the part data turned out to be sane already
+(`docs/suspension-model-spec.md`). What the game has no way to express is the damper, which is
+`coefficient × |velocity|` with **the same coefficient in bump and rebound** and no blow-off.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `Model/Selected` | `Native` | `Native` = the game's own damper, unchanged |
+| `Damper/ReboundRatio` | `2.00` | Rebound coefficient as a multiple of bump. The game uses `1.00` for both |
+| `Damper/LowSpeedGain` | `1.60` | Damping multiplier below the knee velocity |
+| `Damper/KneeVelocity` | `0.10` | Velocity [m/s] where the shim stack opens |
+| `Damper/BlowOffRatio` | `0.25` | Slope above the knee, as a fraction of the slope below |
+| `Damper/ReboundFloor` | `0.00` | How far the damper may pull the body *down*, as a fraction of the wheel's static load |
+
+`LowSpeedGain 1.00` + `BlowOffRatio 1.00` + `ReboundRatio 1.00` reproduces the game exactly; that is the
+A/B switch. Everything is a multiple of the coefficient the game computed, so the mass, wheel-count and
+`damperforce` scaling the game already applies is preserved.
+
+**The `Suspension` section also shows live per-wheel suspension state:**
+
+```
+  wheel              comp     C Ns/m   dir  v m/s    damper N    game N   spring N
+  PartWheelDirt2      52%      1248  bump   -0.31        412       387      2310
+```
+
+`damper N` is what the model produced and `game N` is what the game's own damper would have produced at
+the same velocity, so the difference is visible while driving.
+
+**`ReboundFloor` needs a word of explanation.** The game clamps the total suspension force at zero, so a
+rebound force larger than the spring force is truncated to nothing and the damper can never pull the body
+down. That stops a car being sucked into the ground, but it also means rebound damping loses its
+authority exactly when the suspension is near full extension — which is when it matters most, over a
+crest. Since the wheel has no vertical freedom in this engine, the damper is the only thing that can
+stand in for the wheel's inertia. `0` keeps the game's clamp. It is off by default because it changes the
+game's integrator rather than just the damper law.
 
 ### ECU
 
@@ -211,7 +254,7 @@ coasting as well.
 
 ## Writing your own algorithm
 
-The suite is built to be extended. Three real extension points, all public API.
+The suite is built to be extended. Four real extension points, all public API.
 
 Reference the plugin DLL you are extending from your own project and set it to **not** copy locally
 (the game's BepInEx already provides it):
@@ -281,7 +324,44 @@ public sealed class MyTire : ITireModel
 TireModels.Register(new MyTire());
 ```
 
-### 3. An ABS or traction algorithm
+### 3. A damper model
+
+Implement `IDamperModel` and register it. It shows up in the **Suspension** dropdown immediately.
+
+```csharp
+using ScrewTweaks.Physics.Suspension;
+using UnityEngine;
+
+public sealed class MyDamper : IDamperModel
+{
+    public string Name => "MyDamper";
+    public string Description => "Example: force goes with the square root of velocity.";
+
+    // Return the magnitude of the resistive force in [N], never negative.
+    // The host applies the sign (bump pushes the body up, rebound pulls it down) and the
+    // contact normal, so direction is not your problem.
+    public float Evaluate(in DamperState s)
+    {
+        // s.Compressing - true while the suspension is being compressed
+        // s.Velocity    - |m/s|, never negative
+        // s.GameCoefficient - the game's own C for this wheel [N*s/m], built from the car's mass,
+        //                     the wheel count and the part's damperforce. Scale off it and your
+        //                     model stays consistent with everything else in the game.
+        // s.Travel, s.CompressionPercent, s.SpringForce, s.Wheel - the rest, if you want it.
+        float c = s.GameCoefficient * (s.Compressing ? 1f : 2f);   // split it yourself
+        return c * Mathf.Sqrt(s.Velocity);
+    }
+}
+
+// in Start():
+DamperModels.Register(new MyDamper());
+```
+
+Called once per grounded wheel per physics step, *after* the game has done the hit test and the geometry
+but *before* the force is applied — so the tyre load, the chassis force and the bump sound all see your
+number. Put a `0` in `GameCoefficient` (tank tracks) and a model scaled off it is a no-op there.
+
+### 4. An ABS or traction algorithm
 
 Implement `IBrakeAid` or `IDriveAid` and register it. It appears in the **ECU** dropdown
 automatically, and is saved to the config **by name**.
@@ -350,6 +430,12 @@ peak is `~loadCoefficient` while ours is `|D| * loadCoefficient * forceCoefficie
 `forceCoefficient = 1.35`). That follows from replacing the native circle clamp with a real friction
 ellipse; it is deliberate and one setting away from parity.
 
+**The damper is not re-evaluated while the suspension is bottomed out.**
+`WheelController.SuspensionUpdate` only computes `damper.force` in its `else if (hasHit)` branch, so on
+the bump stop the previous step's force is reused and a stale value goes into the total. The suspension
+module evaluates it there instead. That is the only place it changes the game's behaviour beyond the
+damper law itself, and only when a non-`Native` model is selected.
+
 **Local reference material is not committed.**
 `ScrewTweaks/reference/` (a Project Chrono clone) and `ScrewTweaks/ScrewDrivers/` (the decompiled
 game) are gitignored. Keep them that way.
@@ -358,9 +444,11 @@ game) are gitignored. Keep them that way.
 
 ## Design notes
 
-The reasoning behind the tire model, the measured game data and the deferred suspension plan live in
-[`docs/tire-model-spec.md`](docs/tire-model-spec.md). If you are going to change the tire model, read
-§15–§19 first — they record what the game actually provides.
+The reasoning behind the tire model and the measured game data live in
+[`docs/tire-model-spec.md`](docs/tire-model-spec.md); the suspension measurements, the numbers behind the
+game's scaling and the damper interception design live in
+[`docs/suspension-model-spec.md`](docs/suspension-model-spec.md). If you are going to change either
+module, read its document first — they record what the game actually provides.
 
 Where the numbers come from:
 

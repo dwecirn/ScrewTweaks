@@ -90,6 +90,7 @@ dotnet build ScrewTweaks.sln --no-restore -m:1 -t:ListVersions
 |---|---|---|
 | `ScrewTweaks.Panel` | 共有 F7 パネルホスト。機能自体は持ちません | **F7** |
 | `ScrewTweaks.Physics.Tires` | 差し替え可能なタイヤモデルスロット（ゲーム内で選択） | **F9**（テレメトリ記録） |
+| `ScrewTweaks.Physics.Suspension` | 差し替え可能なダンパーモデルスロット（ゲーム内で選択） | — |
 | `ScrewTweaks.ECU` | ABS / トラクションコントロール | — |
 | `ScrewTweaks.Steering` | Instant Steering + Steering Limit Relax | — |
 | `ScrewTweaks.AutoShift` | より速いオートシフト（F7 → Auto Shift） | — |
@@ -106,6 +107,7 @@ dotnet build ScrewTweaks.sln --no-restore -m:1 -t:ListVersions
 
 - **ECU** — ABS とトラクションのチャンネル
 - **Tires** — タイヤモデルの選択、調整、ホイールごとのライブテレメトリ
+- **Suspension** — ダンパーモデルの選択、調整、ホイールごとのストロークと力のライブ表示
 - **Auto Shift** — より速いシフトタイミングのオン／オフ
 
 パネルを開くとカーソルが解放されます。セクションはプラグインの読み込み順に並びます。
@@ -144,6 +146,34 @@ PartWheelDirt2 g= 0.30  BCDE=(  7.0, 1.10, 0.83, 1.00)  k= 0.021/ 0.000 a=  -4.1
 
 **F9** で 30 秒間の全ホイールのデータを `BepInEx/ScrewTweaks.tire-telemetry.csv` に記録します（`t, wheel, body, tire, tireGrip, BCDE, kappa, alphaDeg, kappaRaw, alphaRawDeg, Fx, Fy, Fz, vx, omega, fwdMax, sideMax, radius, sigma, peak, camberDeg, camberFx`）。
 
+### サスペンション物理
+
+**F7 → Suspension** でダンパーモデルを選べます。選択は記憶されます。`Native` はゲーム標準のダンパーに一切触れず、これが既定値です——つまりこのプラグインを入れてモデルを選ばない限り、挙動は変わりません。
+
+スプリングは**意図的に触っていません**。パーツデータを計算し直したところ、既に妥当でした（`docs/suspension-model-spec.md`）。ゲームが表現できないのはダンパーのほうで、`係数 × |速度|`、**圧縮と伸張で同じ係数**、そしてブローオフがありません。
+
+| 設定 | 既定 | 意味 |
+|---|---|---|
+| `Model/Selected` | `Native` | `Native` = ゲーム標準のダンパーをそのまま使う |
+| `Damper/ReboundRatio` | `2.00` | 伸張係数を圧縮係数の何倍にするか。ゲームは両方 `1.00` |
+| `Damper/LowSpeedGain` | `1.60` | ニー速度以下の減衰倍率 |
+| `Damper/KneeVelocity` | `0.10` | シムスタックが開くサスペンション速度 [m/s] |
+| `Damper/BlowOffRatio` | `0.25` | ニーより上の傾き（下の傾きに対する比率） |
+| `Damper/ReboundFloor` | `0.00` | ダンパーがボディを**下へ引ける**量。そのホイールの静的荷重に対する比率 |
+
+`LowSpeedGain 1.00` + `BlowOffRatio 1.00` + `ReboundRatio 1.00` で**ゲームと完全に同じ**になります。A/B 比較用のスイッチです。すべてゲームが算出した係数の倍数なので、質量・ホイール数・`damperforce` のスケーリングはゲーム本来のものが保たれます。
+
+**`Suspension` セクションにはホイールごとのライブ状態も出ます：**
+
+```
+  wheel              comp     C Ns/m   dir  v m/s    damper N    game N   spring N
+  PartWheelDirt2      52%      1248  bump   -0.31        412       387      2310
+```
+
+`damper N` がモデルの出した値、`game N` が同じ速度でゲーム標準のダンパーが出す値です。差が走行中に見えます。
+
+**`ReboundFloor` には説明が要ります。** ゲームはサスペンションの合力を 0 でクランプするため、伸張力がスプリングの力を超えた分は切り捨てられ、ダンパーがボディを下へ引くことは決してありません。これが車が地面に吸い込まれるのを防いでいますが、同時に**サスペンションがほぼ伸び切ったところで伸張減衰が効かなくなる**ということでもあり、波峰を越えるときにまさに必要な場面です。このエンジンではホイールに上下自由度がないため、ホイールの慣性を代弁できるのはダンパーだけです。`0` がゲームのクランプそのもの。既定で切ってあるのは、これがダンパーの法則だけでなくゲームの積分器を変えるからです。
+
 ### ECU
 
 互いに独立した 2 つのチャンネル。それぞれ**登録済みアルゴリズム**か、2 つの予約モードのいずれかを選べます：
@@ -179,7 +209,7 @@ PartWheelDirt2 g= 0.30  BCDE=(  7.0, 1.10, 0.83, 1.00)  k= 0.021/ 0.000 a=  -4.1
 
 ## 独自アルゴリズムの書き方
 
-このスイートは拡張されることを前提に組まれています。実際に使える拡張ポイントは 3 つ、すべて公開 API です。
+このスイートは拡張されることを前提に組まれています。実際に使える拡張ポイントは 4 つ、すべて公開 API です。
 
 拡張するプラグインの DLL を自分のプロジェクトから参照し、**ローカルにコピーしない**設定にします（BepInEx が既に提供しているため）：
 
@@ -247,7 +277,41 @@ public sealed class MyTire : ITireModel
 TireModels.Register(new MyTire());
 ```
 
-### 3. ABS / トラクションアルゴリズム
+### 3. ダンパーモデル
+
+`IDamperModel` を実装して登録すると、**Suspension** のドロップダウンにすぐ現れます。
+
+```csharp
+using ScrewTweaks.Physics.Suspension;
+using UnityEngine;
+
+public sealed class MyDamper : IDamperModel
+{
+    public string Name => "MyDamper";
+    public string Description => "例：力が速度の平方根に比例する。";
+
+    // 抵抗力の大きさ [N] を返します。負にしてはいけません。
+    // 向きはあなたの仕事ではありません：宿主が符号（圧縮は上、伸張は下）と接触法線を扱います。
+    public float Evaluate(in DamperState s)
+    {
+        // s.Compressing - 圧縮中は true
+        // s.Velocity    - |m/s|、常に非負
+        // s.GameCoefficient - このホイールについてゲームが算出した係数 C [N*s/m]。車重・ホイール数・
+        //                     パーツの damperforce から作られます。これを基準にすれば、モデルは
+        //                     ゲームの他の部分と同じスケーリングを保てます。
+        // s.Travel、s.CompressionPercent、s.SpringForce、s.Wheel - 必要ならどうぞ。
+        float c = s.GameCoefficient * (s.Compressing ? 1f : 2f);   // 分離は自分で
+        return c * Mathf.Sqrt(s.Velocity);
+    }
+}
+
+// Start() の中で：
+DamperModels.Register(new MyDamper());
+```
+
+接地しているホイールごとに物理ステップ 1 回、ゲームのヒット判定とジオメトリの**後**、力が実際に加わる**前**に呼ばれます。したがってタイヤ荷重・シャシーへの力・サスペンションの音はすべてあなたの数値を見ます。係数が `0` の場所（戦車の履帯ホイール）では、それを基準にしたモデルは何もしません。
+
+### 4. ABS / トラクションアルゴリズム
 
 `IBrakeAid` または `IDriveAid` を実装して登録します。**ECU** のドロップダウンに自動で現れ、設定には**名前で**保存されます。
 
@@ -300,6 +364,9 @@ EcuAids.Register(new MyAbs());
 **グリップ量について。**
 `GripScale = 1` のとき、ピークはゲームの**クランプ前**の数値と一致します。なお標準モデルはさらに**合力ベクトル**を `loadCoefficient` にクランプするため、その実効的な前後ピークは `~loadCoefficient` となり、こちらは `|D| * loadCoefficient * forceCoefficient`（`forceCoefficient = 1.35` で約 25% 高い）になります。これは標準の円形クランプを本物の摩擦楕円に置き換えた結果であり、意図的なもので、完全一致まであとスイッチひとつです。
 
+**サスペンションが底付きしている間、ダンパーは再評価されません。**
+`WheelController.SuspensionUpdate` は `damper.force` を `else if (hasHit)` 分岐でしか計算しないため、バンプストップに乗っている間は前ステップの値が使い回され、それが合力に混ざります。サスペンションのモジュールは底付き中も評価します。`Native` 以外のモデルを選んでいるときに、ダンパーの法則以外でゲームの挙動が変わる唯一の箇所です。
+
 **ローカルの参考資料はコミットしません。**
 `ScrewTweaks/reference/`（Project Chrono のクローン）と `ScrewTweaks/ScrewDrivers/`（逆コンパイルしたゲーム）は gitignore されています。そのままにしてください。
 
@@ -307,7 +374,7 @@ EcuAids.Register(new MyAbs());
 
 ## 設計メモ
 
-タイヤモデルの根拠、実測したゲームデータ、延期されたサスペンション計画は [`docs/tire-model-spec.md`](docs/tire-model-spec.md) にあります。タイヤモデルを変更する予定なら、まず §15–§19 を読んでください——ゲームが実際に何を提供しているかが記録されています。
+タイヤモデルの根拠と実測したゲームデータは [`docs/tire-model-spec.md`](docs/tire-model-spec.md) に、サスペンションの実測データ・ゲームのスケーリングの数値・ダンパーの割り込み設計は [`docs/suspension-model-spec.md`](docs/suspension-model-spec.md) にあります。どちらのモジュールを変えるにしても、まずその資料を読んでください——ゲームが実際に何を提供しているかが記録されています。
 
 数値の出どころ：
 

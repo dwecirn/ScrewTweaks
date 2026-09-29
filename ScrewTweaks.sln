@@ -1,4 +1,4 @@
-
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
@@ -18,6 +18,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScrewTweaks.Panel", "src\ScrewTweaks.Panel\ScrewTweaks.Panel.csproj", "{0B6AEAEF-3C98-40DD-AA92-0B79B96104F1}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScrewTweaks.Physics.Tires", "src\ScrewTweaks.Physics.Tires\ScrewTweaks.Physics.Tires.csproj", "{4D8B79F6-73A6-46FA-B3E0-8490948CD606}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScrewTweaks.Physics.Suspension", "src\ScrewTweaks.Physics.Suspension\ScrewTweaks.Physics.Suspension.csproj", "{F73A8E85-B5FE-4BE3-881D-50B8B11097D3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -56,6 +58,10 @@ Global
 		{4D8B79F6-73A6-46FA-B3E0-8490948CD606}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4D8B79F6-73A6-46FA-B3E0-8490948CD606}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4D8B79F6-73A6-46FA-B3E0-8490948CD606}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F73A8E85-B5FE-4BE3-881D-50B8B11097D3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F73A8E85-B5FE-4BE3-881D-50B8B11097D3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F73A8E85-B5FE-4BE3-881D-50B8B11097D3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F73A8E85-B5FE-4BE3-881D-50B8B11097D3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{8D4C9C48-DFC0-4647-8636-63EB1657B942} = {FD0BCB4B-1084-48FC-A2CC-60B04E7309A2}
@@ -65,5 +71,6 @@ Global
 		{A5C6D3D1-4400-445D-A506-2FF4C766CF43} = {FD0BCB4B-1084-48FC-A2CC-60B04E7309A2}
 		{0B6AEAEF-3C98-40DD-AA92-0B79B96104F1} = {FD0BCB4B-1084-48FC-A2CC-60B04E7309A2}
 		{4D8B79F6-73A6-46FA-B3E0-8490948CD606} = {FD0BCB4B-1084-48FC-A2CC-60B04E7309A2}
+		{F73A8E85-B5FE-4BE3-881D-50B8B11097D3} = {FD0BCB4B-1084-48FC-A2CC-60B04E7309A2}
 	EndGlobalSection
 EndGlobal

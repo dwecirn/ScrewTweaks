@@ -90,6 +90,7 @@ dotnet build ScrewTweaks.sln --no-restore -m:1 -t:ListVersions
 |---|---|---|
 | `ScrewTweaks.Panel` | 共享的 F7 面板宿主，自身没有功能 | **F7** |
 | `ScrewTweaks.Physics.Tires` | 可插拔的轮胎模型插槽（游戏内可选） | **F9**（录制遥测） |
+| `ScrewTweaks.Physics.Suspension` | 可插拔的阻尼模型插槽（游戏内可选） | — |
 | `ScrewTweaks.ECU` | ABS / 牵引力控制通道 | — |
 | `ScrewTweaks.Steering` | Instant Steering + Steering Limit Relax | — |
 | `ScrewTweaks.AutoShift` | 更快的自动换挡（F7 → Auto Shift） | — |
@@ -106,6 +107,7 @@ dotnet build ScrewTweaks.sln --no-restore -m:1 -t:ListVersions
 
 - **ECU** —— ABS 与牵引力通道
 - **Tires** —— 轮胎模型选择、调参、每轮实时遥测
+- **Suspension** —— 阻尼模型选择、调参、每轮行程与受力实时显示
 - **Auto Shift** —— 更快换挡时序的开关
 
 面板打开时会解锁鼠标。板块按插件加载顺序排列。
@@ -145,6 +147,34 @@ PartWheelDirt2 g= 0.30  BCDE=(  7.0, 1.10, 0.83, 1.00)  k= 0.021/ 0.000 a=  -4.1
 **F9** 会把 30 秒内每个轮子的数据录到 `BepInEx/ScrewTweaks.tire-telemetry.csv`
 （`t, wheel, body, tire, tireGrip, BCDE, kappa, alphaDeg, kappaRaw, alphaRawDeg, Fx, Fy, Fz, vx, omega, fwdMax, sideMax, radius, sigma, peak, camberDeg, camberFx`）。
 
+### 悬挂物理
+
+在 **F7 → Suspension** 里选择阻尼模型，选择会被记住。`Native` 完全不碰游戏自带的阻尼，也是默认值——所以装上这个插件、不选模型时，游戏行为不变。
+
+弹簧是**刻意没动**的：把零件数据算过一遍之后发现它本来就是合理的（见 `docs/suspension-model-spec.md`）。游戏真正没有能力表达的是阻尼——它是 `系数 × |速度|`，**压缩和回弹用同一个系数**，而且没有卸压。
+
+| 设置 | 默认 | 含义 |
+|---|---|---|
+| `Model/Selected` | `Native` | `Native` = 游戏自带的阻尼，完全不改 |
+| `Damper/ReboundRatio` | `2.00` | 回弹系数相对压缩系数的倍数。游戏两个都是 `1.00` |
+| `Damper/LowSpeedGain` | `1.60` | 拐点速度以下的阻尼倍率 |
+| `Damper/KneeVelocity` | `0.10` | 卸压阀打开的悬挂速度 [m/s] |
+| `Damper/BlowOffRatio` | `0.25` | 拐点之后的斜率，相对拐点之前斜率的比例 |
+| `Damper/ReboundFloor` | `0.00` | 允许阻尼把车身**往下拉**多少，以该轮静态载荷的比例计 |
+
+`LowSpeedGain 1.00` + `BlowOffRatio 1.00` + `ReboundRatio 1.00` 就是**完全复刻原版**，这是拿来 A/B 对比的开关。所有东西都是游戏自己算出的那个系数的倍数，所以质量、轮数、`damperforce` 属性的缩放任然是游戏原本那套。
+
+**`Suspension` 板块同时显示每轮的实时悬挂状态：**
+
+```
+  wheel              comp     C Ns/m   dir  v m/s    damper N    game N   spring N
+  PartWheelDirt2      52%      1248  bump   -0.31        412       387      2310
+```
+
+`damper N` 是模型算出来的，`game N` 是同一速度下游戏原本会算出的值——差值在开车过程中直接看得见。
+
+**`ReboundFloor` 需要解释一下。** 游戏把悬挂合力钳在 0，所以回弹力一旦大于弹簧力就被截成 0，阻尼永远无法把车身往下拉。这防止了车被吸进地面，但也意味着**悬挂接近全伸张时回弹阻尼恰好失效**——而过波峰时正需要它。这个引擎里轮子没有垂向自由度，阻尼是唯一能代替轮子惯性的东西。`0` 就是游戏原本的钳位；默认关闭，因为它改的是游戏的积分器，而不只是阻尼规律。
+
 ### ECU
 
 两条互相独立的通道，每条既可以选**已注册的算法**，也可以选两个保留模式之一：
@@ -180,7 +210,7 @@ PartWheelDirt2 g= 0.30  BCDE=(  7.0, 1.10, 0.83, 1.00)  k= 0.021/ 0.000 a=  -4.1
 
 ## 编写自己的算法
 
-整套东西就是为了可扩展而搭的。三个真正的扩展点，全部是公开 API。
+整套东西就是为了可扩展而搭的。四个真正的扩展点，全部是公开 API。
 
 你的项目需要引用要扩展的那个插件 DLL，并设为**不本地复制**（BepInEx 已经提供了它）：
 
@@ -248,7 +278,40 @@ public sealed class MyTire : ITireModel
 TireModels.Register(new MyTire());
 ```
 
-### 3. ABS / 牵引力算法
+### 3. 阻尼模型
+
+实现 `IDamperModel` 并注册，它会立刻出现在 **Suspension** 下拉里。
+
+```csharp
+using ScrewTweaks.Physics.Suspension;
+using UnityEngine;
+
+public sealed class MyDamper : IDamperModel
+{
+    public string Name => "MyDamper";
+    public string Description => "例子：力与速度的平方根成正比。";
+
+    // 返回阻力的大小 [N]，永远非负。
+    // 方向不归你管：宿主负责加符号（压缩向上顶、回弹向下拉）和接触法线。
+    public float Evaluate(in DamperState s)
+    {
+        // s.Compressing - 悬挂正在被压缩时为 true
+        // s.Velocity    - |m/s|，永远非负
+        // s.GameCoefficient - 游戏为这个轮子算出的系数 C [N*s/m]，由车重、轮数和零件的
+        //                     damperforce 构成。以它为基准，你的模型就和游戏其余部分一致。
+        // s.Travel、s.CompressionPercent、s.SpringForce、s.Wheel - 需要就用。
+        float c = s.GameCoefficient * (s.Compressing ? 1f : 2f);   // 分离自己算
+        return c * Mathf.Sqrt(s.Velocity);
+    }
+}
+
+// 在 Start() 里：
+DamperModels.Register(new MyDamper());
+```
+
+每个物理步、每个接地轮调用一次，在游戏做完碰撞检测和几何之后、力真正施加之前——所以轮胎载荷、车身受力和减震器音效拿到的都是你的数值。系数为 `0` 的地方（坦克履带轮）以它为基础缩放的模型自然无效果。
+
+### 4. ABS / 牵引力算法
 
 实现 `IBrakeAid` 或 `IDriveAid` 并注册。它会**自动**出现在 **ECU** 下拉里，并在配置里**按名字**保存。
 
@@ -301,6 +364,9 @@ EcuAids.Register(new MyAbs());
 **抓地力大小。**
 `GripScale = 1` 时峰值与游戏**未做 clamp 之前**的数值一致。注意原版还会额外把**合力向量**硬压到 `loadCoefficient`，所以它的有效纵向峰值是 `~loadCoefficient`，而我们是 `|D| * loadCoefficient * forceCoefficient`（在 `forceCoefficient = 1.35` 时高约 25%）。这是用真实摩擦椭圆替换原版圆形 clamp 的必然结果，是有意为之，且距"完全对齐"只差一个开关。
 
+**悬挂触底时阻尼不会被重算。**
+`WheelController.SuspensionUpdate` 只在 `else if (hasHit)` 分支里计算 `damper.force`，所以压在限位块上时用的是上一帧的旧值，而它仍然被算进了合力。悬挂模块在触底时照常求值。这是选中非 `Native` 模型时，它唯一一处改动游戏原有行为的地方。
+
 **本地参考资料不入库。**
 `ScrewTweaks/reference/`（Project Chrono 的克隆）和 `ScrewTweaks/ScrewDrivers/`（反编译的游戏）都已被 gitignore。请保持现状。
 
@@ -308,7 +374,7 @@ EcuAids.Register(new MyAbs());
 
 ## 设计说明
 
-轮胎模型的推理过程、实测到的游戏数据，以及被推迟的悬挂计划，都写在 [`docs/tire-model-spec.md`](docs/tire-model-spec.md)。如果打算改轮胎模型，先读 §15–§19——那里记录了游戏实际提供了什么。
+轮胎模型的推理过程和实测到的游戏数据写在 [`docs/tire-model-spec.md`](docs/tire-model-spec.md)；悬挂的实测数据、游戏缩放的数值推导和阻尼接入设计写在 [`docs/suspension-model-spec.md`](docs/suspension-model-spec.md)。要改哪个模块，就先读哪一份——它们记录了游戏实际提供了什么。
 
 数值的来源：
 

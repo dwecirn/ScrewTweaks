@@ -561,6 +561,12 @@ zero camber, which is the default, so this only shows up for cars that actually 
 Target: a future `ScrewTweaks.Physics.Suspension`, polishing the **existing** spring/damper only.
 No ARB, no toe, no added geometry (the user explicitly preferred improving what is already there).
 
+> **Implemented** - this is the original finding list and is kept for context. The module, the measured
+> part data, the numbers behind the game's scaling and the interception design are in
+> `docs/suspension-model-spec.md`. Points 1 and 2 below (bump/rebound split, damper velocity curve)
+> shipped as `IDamperModel` / `DigressiveDamper`; point 3 (spring) turned out to need nothing once the
+> part data was measured; point 4 (four-way damper) is not done.
+
 ### Findings (2026-09)
 
 **Spring is broadly fine:**
@@ -595,7 +601,7 @@ adjustable and the curve is used over its whole domain.
    structure, just split into two velocity bands (bleed = linear, shim stack = digressive plateau).
 
 Inputs stay the game's own `springforce` / `damperforce` / `progressiveness`, and defaults should
-stay close to vanilla. Deferred by the user as of 2026-09.
+stay close to vanilla.
 
 ---
 
