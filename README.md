@@ -129,7 +129,7 @@ content column takes the rest of the width. Each feature plugin registers a titl
 - **Suspension** — damper and tyre vertical model selection, tuning, live per-wheel travel and force
 - **Auto Shift** — on/off for the faster shift timing
 - **Steering** — Instant Steering and the steering limit relax
-- **Settings** — the panel's own settings, always last
+- **Settings** — the panel's own settings, first in the list: side, language, and the loaded modules with their versions
 
 The panel unlocks the cursor while open. Sections are listed in plugin load order.
 

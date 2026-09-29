@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using BepInEx;
 using ScrewTweaks.Panel.Generated;
 using UnityEngine;
@@ -19,6 +20,9 @@ namespace ScrewTweaks.Panel
     public class Plugin : BaseUnityPlugin
     {
         private const int WindowId = 0x5EC1;
+
+        private const string SuitePrefix = "dev.dwecirn.screwtweaks";
+        private const string SuiteName = "Screw Tweaks - ";
 
         // The tab column sizes itself to the widest caption; only these bounds are fixed.
         private const float MinSidebarWidth = 96f;
@@ -47,7 +51,7 @@ namespace ScrewTweaks.Panel
         // Two separate selectors rather than one index: the section list is appended to while plugins
         // start, and Settings is not a section at all.
         private int _active;
-        private bool _settingsActive;
+        private bool _settingsActive = true;
 
         private bool _placed;
         private int _lastScreenWidth = -1;
@@ -200,8 +204,15 @@ namespace ScrewTweaks.Panel
             _tabScroll = GUILayout.BeginScrollView(_tabScroll, false, false,
                 GUIStyle.none, ThinScrollbar(), GUIStyle.none);
 
+            // Settings first: it is what you want on opening the panel, and the section list follows it.
             // No width on the buttons: they take the column's width, so the content can never be wider
             // than the view and no horizontal scrollbar is ever needed.
+            if (GUILayout.Button(TabLabel(Loc.T("Settings"), _settingsActive)))
+            {
+                if (!_settingsActive) _contentScroll = Vector2.zero;
+                _settingsActive = true;
+            }
+
             for (int i = 0; i < sections.Count; i++)
             {
                 bool active = !_settingsActive && _active == i;
@@ -211,12 +222,6 @@ namespace ScrewTweaks.Panel
                     _settingsActive = false;
                     _active = i;
                 }
-            }
-
-            if (GUILayout.Button(TabLabel(Loc.T("Settings"), _settingsActive)))
-            {
-                if (!_settingsActive) _contentScroll = Vector2.zero;
-                _settingsActive = true;
             }
 
             GUILayout.EndScrollView();
@@ -245,7 +250,8 @@ namespace ScrewTweaks.Panel
 
         private void DrawSettings()
         {
-            GUILayout.Label(Loc.T("Panel settings"));
+            PanelUi.Label(Loc.T("Panel settings"),
+                Loc.T("Drag the title bar to move the window, the dotted grip in a corner to resize it."));
             GUILayout.Space(10f);
 
             GUILayout.Label(Loc.T("Tab side"));
@@ -268,9 +274,40 @@ namespace ScrewTweaks.Panel
             GUILayout.EndHorizontal();
 
             GUILayout.Space(16f);
-            GUILayout.Label($"{PluginInfo.Name}  {PluginInfo.Version}");
+            DrawModules();
+
+            GUILayout.Space(10f);
             GUILayout.Label(Loc.Tf("Settings are saved to {0}.", $"{PluginInfo.GUID}.cfg"));
-            GUILayout.Label(Loc.T("Drag the title bar to move the window, the dotted grip in a corner to resize it."));
+        }
+
+        /// <summary>
+        /// What is actually loaded, with versions, taken from BepInEx rather than from a list kept here:
+        /// that way it reports what is running instead of what should be, and it picks up modules this
+        /// panel has never heard of as long as they are part of the suite.
+        /// </summary>
+        private static void DrawModules()
+        {
+            PanelUi.Label(Loc.T("Modules"),
+                Loc.T("Read from BepInEx, so this is what is loaded rather than what should be."));
+
+            try
+            {
+                foreach (var pair in BepInEx.Bootstrap.Chainloader.PluginInfos.OrderBy(p => p.Value?.Metadata?.Name))
+                {
+                    if (!pair.Key.StartsWith(SuitePrefix, StringComparison.Ordinal)) continue;
+
+                    var metadata = pair.Value?.Metadata;
+                    string name = metadata?.Name ?? pair.Key;
+                    if (name.StartsWith(SuiteName, StringComparison.Ordinal))
+                        name = name.Substring(SuiteName.Length);
+
+                    GUILayout.Label($"  {name}   {metadata?.Version}");
+                }
+            }
+            catch
+            {
+                // never break the panel
+            }
         }
 
         /// <summary>

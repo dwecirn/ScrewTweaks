@@ -110,7 +110,7 @@ dotnet build ScrewTweaks.sln --no-restore -m:1 -t:ListVersions
 - **Suspension** —— 阻尼与轮胎垂向模型选择、调参、每轮行程与受力实时显示
 - **Auto Shift** —— 更快换挡时序的开关
 - **Steering** —— 瞬间转向与转向限制松弛
-- **Settings** —— 面板自身的设置，永远在最后
+- **Settings** —— 面板自身的设置，排在第一个：位置、语言，以及已加载的模块及各自版本
 
 面板打开时会解锁鼠标。板块按插件加载顺序排列。
 
