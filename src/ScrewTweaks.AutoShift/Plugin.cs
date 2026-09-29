@@ -87,7 +87,9 @@ namespace ScrewTweaks.AutoShift
             if (_enabled == null) return;
 
             bool enabled = _enabled.Value;
-            bool wanted = GUILayout.Toggle(enabled, Loc.T(" Faster automatic shifting"));
+            bool wanted = PanelUi.Toggle(Loc.T(" Faster automatic shifting"), enabled,
+                Loc.T("The box is saved to the config file and applies immediately.")
+                + "\n\n" + Loc.T("Unticking it restores the game's own shift timing."));
             if (wanted != enabled)
                 _enabled.Value = wanted;
 
@@ -96,10 +98,6 @@ namespace ScrewTweaks.AutoShift
             TimingRow(Loc.T("RPM threshold held for"), AutoShiftFeature.FastOverThreshFor, game?.OverThreshFor);
             TimingRow(Loc.T("Minimum time between shifts"), AutoShiftFeature.FastShiftMinCooldownTime, game?.MinCooldown);
             TimingRow(Loc.T("Torque cut while engaging"), AutoShiftFeature.FastShiftDeadTime, game?.DeadTime);
-
-            GUILayout.Space(10f);
-            GUILayout.Label(Loc.T("The box is saved to the config file and applies immediately."));
-            GUILayout.Label(Loc.T("Unticking it restores the game's own shift timing."));
         }
 
         /// <summary>

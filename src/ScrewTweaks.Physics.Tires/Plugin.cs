@@ -161,11 +161,12 @@ namespace ScrewTweaks.Physics.Tires
         private void DrawSection()
         {
             var current = TireModels.Current;
-            GUILayout.Label(Loc.Tf("Tyre model: {0}", current?.Name ?? "-"));
-            if (current != null)
-            {
-                GUILayout.Label(Loc.T(current.Description));
-            }
+            PanelUi.Label(Loc.Tf("Tyre model: {0}", current?.Name ?? "-"),
+                current == null
+                    ? null
+                    : Loc.T(current.Description)
+                      + "\n\n" + Loc.T("The slot replaces WheelController.FrictionUpdate;")
+                      + "\n" + Loc.T("Native keeps the game's original friction."));
 
             GUILayout.Space(6f);
             if (GUILayout.Button($"{current?.Name ?? "-"} ▼", GUILayout.Width(240f)))
@@ -232,10 +233,6 @@ namespace ScrewTweaks.Physics.Tires
                     $"y={SafeRatio(s.Fy, s.FyMax),4:F2} Fz={s.Fz,6:F0} R={s.Radius,5:F2} sig={s.Sigma,4:F2} " +
                     $"camber={s.CamberDeg,5:F1} camFx={s.CamberThrustForce,6:F0}");
             }
-
-            GUILayout.Space(10f);
-            GUILayout.Label(Loc.T("The slot replaces WheelController.FrictionUpdate;"));
-            GUILayout.Label(Loc.T("Native keeps the game's original friction."));
         }
 
         private static float SafeRatio(float value, float max)

@@ -87,7 +87,8 @@ namespace ScrewTweaks.ECU
 
         private void DrawSection()
         {
-            DrawDropdown(Loc.T("ABS"), Aids.BrakeSelection, ref _absOpen, SetAbs, Aids.BrakeNames());
+            DrawDropdown(Loc.T("ABS"), Aids.BrakeSelection, ref _absOpen, SetAbs, Aids.BrakeNames(),
+                Loc.T("Changes apply live and are saved to the config file."));
             if (Aids.BrakeAid != null)
             {
                 DrawSlider(Loc.T("Target slip"), Aids.AbsTargetConfig, 0.02f, 0.60f, "0.00");
@@ -96,22 +97,21 @@ namespace ScrewTweaks.ECU
             }
 
             GUILayout.Space(10f);
-            DrawDropdown(Loc.T("Traction"), Aids.DriveSelection, ref _tractionOpen, SetTraction, Aids.DriveNames());
+            DrawDropdown(Loc.T("Traction"), Aids.DriveSelection, ref _tractionOpen, SetTraction, Aids.DriveNames(),
+                Loc.T("Other plugins can add algorithms: EcuAids.Register(...)."));
             if (Aids.DriveAid != null)
             {
                 DrawSlider(Loc.T("Target slip"), Aids.TractionTargetConfig, 0.02f, 0.60f, "0.00");
                 DrawSlider(Loc.T("Cut gain"), Aids.TractionGainConfig, 0.5f, 12f, "0.0");
             }
-
-            GUILayout.Space(10f);
-            GUILayout.Label(Loc.T("Changes apply live and are saved to the config file."));
-            GUILayout.Label(Loc.T("Other plugins can add algorithms: EcuAids.Register(...)."));
         }
 
-        private static void DrawDropdown(string label, string current, ref bool open, Action<string> onChange, List<string> modes)
+        private static void DrawDropdown(string label, string current, ref bool open, Action<string> onChange,
+            List<string> modes, string? tooltip = null)
         {
             GUILayout.BeginHorizontal();
-            GUILayout.Label(label, GUILayout.Width(80f));
+            if (tooltip == null) GUILayout.Label(label, GUILayout.Width(80f));
+            else PanelUi.Label(label, tooltip, 80f);
             if (GUILayout.Button($"{current} ▼", GUILayout.Width(160f)))
                 open = !open;
             GUILayout.EndHorizontal();

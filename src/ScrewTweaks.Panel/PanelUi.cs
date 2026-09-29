@@ -50,15 +50,20 @@ namespace ScrewTweaks.Panel
         }
 
         /// <summary>A label with an explanation shown while the mouse rests on it.</summary>
-        public static void Label(string text, string? tooltip)
+        public static void Label(string text, string? tooltip, float width = 0f)
         {
             if (tooltip == null)
             {
-                GUILayout.Label(text);
+                if (width > 0f) GUILayout.Label(text, GUILayout.Width(width));
+                else GUILayout.Label(text);
                 return;
             }
 
-            Rect rect = GUILayoutUtility.GetRect(new GUIContent(text), GUI.skin.label);
+            var content = new GUIContent(text);
+            Rect rect = width > 0f
+                ? GUILayoutUtility.GetRect(content, GUI.skin.label, GUILayout.Width(width))
+                : GUILayoutUtility.GetRect(content, GUI.skin.label);
+
             GUI.Label(rect, text);
 
             if (rect.Contains(Event.current.mousePosition)) Hover(tooltip);

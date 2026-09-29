@@ -109,6 +109,7 @@ dotnet build ScrewTweaks.sln --no-restore -m:1 -t:ListVersions
 - **Tires** —— 轮胎模型选择、调参、每轮实时遥测
 - **Suspension** —— 阻尼与轮胎垂向模型选择、调参、每轮行程与受力实时显示
 - **Auto Shift** —— 更快换挡时序的开关
+- **Steering** —— 瞬间转向与转向限制松弛
 - **Settings** —— 面板自身的设置，永远在最后
 
 面板打开时会解锁鼠标。板块按插件加载顺序排列。
@@ -254,8 +255,16 @@ PartWheelDirt2 g= 0.30  BCDE=(  7.0, 1.10, 0.83, 1.00)  k= 0.021/ 0.000 a=  -4.1
 
 ### 转向
 
-- **Instant Steering** —— 造车界面里的每个悬挂一个开关。键盘 / 十字键这类二值输入会**立即到位**，不再被 `FrontWheelsSteerer` 慢慢推过去——也就是和摇杆原本的直驱行为一致。
-- **Steering Limit Relax** —— 在游戏自带的操控设置页里，位于 *Ignore Steer Angle Limit* 下方的一个滑条。把游戏随速度收紧的转向限制朝"无限制"方向混合。`0` = 原版。
+两项设置各出现两次——游戏自带的操控设置页里各有一行（在 *Ignore Steer Angle Limit* 下方），**F7 → Steering** 面板里也各有一个控件。两边改的是同一个配置项，所以不会各说各话。
+
+| 设置 | 默认 | 含义 |
+|---|---|---|
+| `Steering/InstantSteering` | `false` | 键盘 / 十字键这类二值输入**立即到位**，不再被逐渐推过去——也就是和摇杆原本的直驱行为一致 |
+| `Steering/LimitRelax` | `0.00` | 把游戏随速度收紧的转向限制朝"无限制"方向混合。`0` = 原版，`1` = 等同游戏自带的 *Ignore Steer Angle Limit* |
+
+两项都保存在 `dev.dwecirn.screwtweaks.steering.cfg`，改完会**立即作用到场上已有的车**，不用重新生成。
+
+Instant Steering 原本是造车界面里每个悬挂的开关。现在它是全局设置，所以一次作用于所有车；用旧属性存过的车会在存档里留一条不再使用的属性，游戏会忽略它。
 
 ### 其他插件
 

@@ -128,6 +128,7 @@ content column takes the rest of the width. Each feature plugin registers a titl
 - **Tires** — tire model selection, tuning, live per-wheel telemetry
 - **Suspension** — damper and tyre vertical model selection, tuning, live per-wheel travel and force
 - **Auto Shift** — on/off for the faster shift timing
+- **Steering** — Instant Steering and the steering limit relax
 - **Settings** — the panel's own settings, always last
 
 The panel unlocks the cursor while open. Sections are listed in plugin load order.
@@ -323,11 +324,20 @@ coasting as well.
 
 ### Steering
 
-- **Instant Steering** — a per-suspension on/off property in the car builder. Binary (keyboard /
-  d-pad) input is applied immediately instead of being ramped by `FrontWheelsSteerer`, the same way
-  an analog stick already behaves.
-- **Steering Limit Relax** — a slider on the game's own controls settings page, below *Ignore Steer
-  Angle Limit*. Blends the game's speed-sensitive steering limit toward "no limit". `0` = vanilla.
+Both settings appear twice — as a row each on the game's own controls settings page, below *Ignore Steer
+Angle Limit*, and in **F7 → Steering**. Either place edits the same entry, so the two cannot disagree.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `Steering/InstantSteering` | `false` | Apply binary (keyboard / d-pad) steering input in one frame instead of ramping it, the way an analog stick already behaves |
+| `Steering/LimitRelax` | `0.00` | Blend the game's speed-sensitive steering limit toward none. `0` = vanilla, `1` = the same as the game's *Ignore Steer Angle Limit* |
+
+Both live in `dev.dwecirn.screwtweaks.steering.cfg`, and a change takes effect on the cars in the world
+without re-spawning them.
+
+Instant Steering used to be a per-suspension on/off property in the car builder. It is a setting now, so
+it applies to every car at once; cars saved with the old property keep an unused line in their file, which
+the game ignores.
 
 ### Other plugins
 
