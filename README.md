@@ -3,83 +3,42 @@
 **English** | [中文](README.zh-CN.md) | [日本語](README.ja.md)
 
 A BepInEx mod suite for **Screw Drivers** that rebuilds the tyre and suspension force models out of the
-game's own part data, adds a four-way damper, gives the wheel a vertical degree of freedom, and runs
-closed-loop ABS and traction control on top of it.
+game's own part data, and adds a four-way damper, a wheel with vertical freedom and closed-loop ABS and
+traction control on top of it.
 
-Nothing in the game's data is rebalanced. Every model reads the numbers the parts already carry —
-`FrictionPreset` B/C/D/E, `loadGripCurve`, `maximumTireGripForce`, `springforce`, `damperforce`,
-`SuspensionStiffness` — so a car behaves the way its parts say it should, and the difference between a
-street build and a race build is the difference the game already intended.
+Every model reads the numbers the parts already carry — `FrictionPreset` B/C/D/E, `loadGripCurve`,
+`maximumTireGripForce`, `springforce`, `damperforce`, `SuspensionStiffness` — so a car behaves the way its
+parts say it should, and a street build and a race build differ for the reasons the game already intended.
+
+---
 
 ## What it changes
 
-**Tyre force comes from a slip curve.** The native model assembles its forces from NWH's hard-coded
-`WheelFrictionCurve`s and then clamps the resulting *vector* to the load coefficient, so longitudinal and
-lateral demand share one circular budget and slip is instantaneous. The shipped model evaluates a
-Pacejka-89-style Magic Formula against the game's own per-tyre, per-surface coefficients, scales the peak
-with the game's `loadGripCurve`, and integrates its own wheel spin — so drive and brake torque act on
-rotational inertia instead of on a force ceiling.
+**Tyre force from a slip curve.** A Pacejka-89 Magic Formula evaluated against the tyre's own per-surface
+B/C/D/E, its peak scaled by the game's `loadGripCurve`. Wheel spin is integrated by the model, so drive and
+brake torque act on rotational inertia.
 
-**Combined slip is a friction ellipse.** The two demands share a budget shaped by the tyre's own
-longitudinal and lateral limits rather than by a circle: the ADAMS formulation, as used by Project
-Chrono's `ChPac02Tire`. A wheel past its longitudinal peak gives up lateral force by construction, which
-is what makes a locked front wash out and a locked rear rotate.
+**Combined slip.** An ADAMS friction ellipse, the formulation Project Chrono's `ChPac02Tire` uses:
+longitudinal and lateral demand draw on one budget set by the tyre's own limits, and a wheel past its
+longitudinal peak gives up lateral force.
 
-**Slip is transient.** A relaxation length on both components: the tyre builds force over distance, which
-is most of where a car's sense of mass comes from at turn-in. The *kinematic* slip is published back to
-the game, so the aids and the drivetrain still see what the wheel is actually doing rather than a filtered
-version of it.
+**Transient slip.** A relaxation length on both slip components, so force builds over distance. The
+kinematic slip is published back to the game, which is what the drivetrain and the aids read.
 
-**The wheel has vertical freedom.** A two-mass quarter car: unsprung mass from the wheel part, a tyre
-vertical rate and damping derived from the suspension's own wheel rate, integrated in substeps chosen from
-the ω·dt stability criterion rather than from a slider. The tyre filters sharp loads before the chassis
-sees them, and a wheel can leave the ground.
+**Vertical freedom.** A two-mass quarter car: unsprung mass from the wheel part, a tyre vertical rate and
+damping derived from the suspension's own wheel rate, substepped from the ω·dt stability criterion.
 
-**The damper is four-way.** Independent bump and rebound coefficients either side of a blow-off velocity,
-piecewise-linear and continuous at the knee, replacing the game's single symmetric coefficient. Stored on
-the suspension part, so a car carries its own setup.
+**A four-way damper.** Independent bump and rebound coefficients either side of a blow-off velocity,
+piecewise-linear and continuous at the knee, stored on the suspension part so a car carries its own setup.
 
-**ABS and traction are closed loops.** Slip-ratio targets with a gain and a floor, evaluated per wheel per
-step, with the native aid neutralised on whichever channel is being managed.
+**Closed-loop aids.** Slip-ratio targets with a gain and a floor, evaluated per wheel per step.
 
-That the models are replaceable is not a claim on paper: `ITireModel`, `IDamperModel`,
-`ITireVerticalModel`, `IBrakeAid`/`IDriveAid` and the panel host are all public API, and
-[Writing your own algorithm](#writing-your-own-algorithm) shows each one.
+The models are replaceable slots: `ITireModel`, `IDamperModel`, `ITireVerticalModel`,
+`IBrakeAid`/`IDriveAid` and the panel host are public API, and
+[docs/extending.md](docs/extending.md) shows each one at work.
 
-## What it does not do
-
-- **It does not add grip.** Peak force matches the native model's, so what changes is behaviour, not how
-  much grip the car has. `GripScale` is there if you want to change grip itself.
-- **It does not add anti-roll bars or toe.** The suspension work polishes the spring and damper that are
-  already there.
-- **It only covers the NWH wheel backend.** The legacy wheel paths are untouched.
 
 ---
-
-## Contents
-
-- [What it changes](#what-it-changes)
-- [Install](#install)
-- [Building from source](#building-from-source)
-- [Plugins and keys](#plugins-and-keys)
-- [The in-game panel](#the-in-game-panel)
-- [Tuning reference](#tuning-reference)
-  - [Tire physics](#tire-physics)
-  - [Suspension physics](#suspension-physics)
-  - [ECU](#ecu)
-  - [Steering](#steering)
-  - [Other plugins](#other-plugins)
-- [Writing your own algorithm](#writing-your-own-algorithm)
-  - [A panel section](#1-a-panel-section)
-  - [A tire model](#2-a-tire-model)
-  - [A damper or tyre model](#3-a-damper-or-tyre-model)
-  - [An ABS or traction algorithm](#4-an-abs-or-traction-algorithm)
-- [Behaviour notes and gotchas](#behaviour-notes-and-gotchas)
-- [Design notes](#design-notes)
-- [Third-party](#third-party)
-
----
-
 ## Install
 
 1. Install **BepInEx 5 (x64)** into your Screw Drivers folder if you have not already
@@ -392,204 +351,6 @@ the game ignores.
   mixes the two by instantaneous torque.
 - **Power Factor** — a per-engine-type power factor that travels with the car's saved file. Fully
   automatic: it injects and persists through Harmony patches and needs no key.
-
----
-
-## Writing your own algorithm
-
-The suite is built to be extended. Four real extension points, all public API.
-
-Reference the plugin DLL you are extending from your own project and set it to **not** copy locally
-(the game's BepInEx already provides it):
-
-```xml
-<Reference Include="ScrewTweaks.ECU">
-  <HintPath>$(GameDir)\BepInEx\plugins\ScrewTweaks.ECU.dll</HintPath>
-  <Private>false</Private>
-</Reference>
-```
-
-and declare the dependency so load order is correct:
-
-```csharp
-[BepInDependency("dev.dwecirn.screwtweaks.ecu")]
-```
-
-### 1. A panel section
-
-```csharp
-using ScrewTweaks.Panel;
-
-private void Start() => PanelHost.Register("My Section", DrawSection);
-
-private void DrawSection()
-{
-    GUILayout.Label("hello");
-    if (GUILayout.Button("do a thing")) { /* ... */ }
-}
-```
-
-`PanelHost.Register(title, draw)` is called from your `Start()`. The draw action re-runs every frame
-inside a scroll view; use `GUILayout`. Registering the same title again replaces the action.
-
-A section is localised through the same table the suite uses. Strings are keyed by their English source,
-so a missing translation falls back to readable English and a section can be translated one string at a
-time:
-
-```csharp
-using ScrewTweaks.Panel;
-
-// in Start(), next to PanelHost.Register:
-Loc.Add(PanelLanguage.Japanese, ("hello", "こんにちは"));
-Loc.Add(PanelLanguage.ChineseSimplified, ("hello", "你好"));
-
-// add one for the tab title itself and the tab is localised too
-Loc.Add(PanelLanguage.Japanese, ("My Section", "マイセクション"));
-```
-
-`Loc.T("hello")` inside the draw action then returns the translation, and `Loc.Tf` fills in a format
-string. Nothing outside your own strings is touched.
-
-### 2. A tire model
-
-Implement `ITireModel` and register it. It shows up in the **Tires** dropdown immediately.
-
-```csharp
-using ScrewTweaks.Physics.Tires;
-
-public sealed class MyTire : ITireModel
-{
-    public string Name => "MyTire";
-    public string Description => "What it does.";
-
-    // Return true if you produced the forces and integrated the wheel spin.
-    // Return false to let the game's own friction run this step.
-    public bool Apply(WheelController wheel, float dt)
-    {
-        // Speeds are already filled in for you:
-        float vx = wheel.forwardFriction.speed;
-        float vy = wheel.sideFriction.speed;
-
-        // ... compute fx, fy from your own model ...
-
-        wheel.forwardFriction.force = fx;
-        wheel.sideFriction.force = fy;
-        wheel.forwardFriction.slip = slipRatio;   // kinematic slip, see gotchas
-        wheel.sideFriction.slip = slipAngle;
-        // and integrate wheel.wheel.angularVelocity yourself
-        return true;
-    }
-}
-
-// in Start():
-TireModels.Register(new MyTire());
-```
-
-### 3. A damper or tyre model
-
-Two slots here, on the same patch point: `IDamperModel` for the damper's force law, and
-`ITireVerticalModel` for the tyre's vertical force once the wheel has a degree of freedom of its own.
-
-Implement `IDamperModel` and register it. It shows up in the **Suspension** dropdown immediately.
-
-```csharp
-using ScrewTweaks.Physics.Suspension;
-using UnityEngine;
-
-public sealed class MyDamper : IDamperModel
-{
-    public string Name => "MyDamper";
-    public string Description => "Example: force goes with the square root of velocity.";
-
-    // Return the magnitude of the resistive force in [N], never negative.
-    // The host applies the sign (bump pushes the body up, rebound pulls it down) and the
-    // contact normal, so direction is not your problem.
-    public float Evaluate(in DamperState s)
-    {
-        // s.Compressing - true while the suspension is being compressed
-        // s.Velocity    - |m/s|, never negative
-        // s.GameCoefficient - the game's own C for this wheel [N*s/m], built from the car's mass,
-        //                     the wheel count and the part's damperforce. Scale off it and your
-        //                     model stays consistent with everything else in the game.
-        // s.Travel, s.CompressionPercent, s.SpringForce, s.Wheel - the rest, if you want it.
-        float c = s.GameCoefficient * (s.Compressing ? 1f : 2f);   // split it yourself
-        return c * Mathf.Sqrt(s.Velocity);
-    }
-}
-
-// in Start():
-DamperModels.Register(new MyDamper());
-```
-
-Called once per grounded wheel per physics step, *after* the game has done the hit test and the geometry
-but *before* the force is applied — so the tyre load, the chassis force and the bump sound all see your
-number. Put a `0` in `GameCoefficient` (tank tracks) and a model scaled off it is a no-op there.
-
-`ITireVerticalModel` is the other half: it is only consulted while `TireVertical/Model` is not `Native`,
-and it is called once per **substep** rather than once per step.
-
-```csharp
-using ScrewTweaks.Physics.Suspension;
-using UnityEngine;
-
-public sealed class MyTyre : ITireVerticalModel
-{
-    public string Name => "MyTyre";
-    public string Description => "Example: a tyre that stiffens as it is pressed in.";
-
-    // Return the upward force the ground pushes the wheel with, in [N], never negative.
-    public float Evaluate(in TireVerticalState s)
-    {
-        // s.Deflection         - how far into the ground the tyre is pressed [m]; negative in the air
-        // s.DeflectionRate     - relative rate between wheel and ground [m/s]
-        // s.UnsprungMass       - the wheel's own mass [kg]
-        // s.ReferenceStiffness - the host's linear value for this wheel, a useful scale to work from
-        float d = Mathf.Max(s.Deflection, 0f);
-        return s.ReferenceStiffness * d * (1f + d * 20f);   // progressive
-    }
-}
-
-// in Start():
-TireVerticalModels.Register(new MyTyre());
-```
-
-### 4. An ABS or traction algorithm
-
-Implement `IBrakeAid` or `IDriveAid` and register it. It appears in the **ECU** dropdown
-automatically, and is saved to the config **by name**.
-
-```csharp
-using ScrewTweaks.ECU;
-using UnityEngine;
-
-public sealed class MyAbs : IBrakeAid
-{
-    public string Name => "MyAbs";
-    public string Description => "Example: bang-bang around the peak slip.";
-
-    public float Apply(in AidContext ctx, float desiredBrake)
-    {
-        if (desiredBrake <= 0f) return desiredBrake;
-
-        // ctx.Controller is the NWH wheel: load, radius, angular velocity, motor/brake torque,
-        // the active friction preset, the latest slip values. Null off the NWH backend.
-        if (ctx.Controller == null) return desiredBrake;
-
-        float peakSlip = 0.125f;                     // where the game's asphalt curve peaks
-        return Mathf.Abs(ctx.ForwardSlip) > peakSlip ? 0f : desiredBrake;
-    }
-}
-
-// or: EcuAids.Register(new MyTraction());  for IDriveAid
-EcuAids.Register(new MyAbs());
-```
-
-`IBrakeAid` / `IDriveAid` are called once per wheel per physics step, *after* the game has computed
-its own torque but *before* it is handed to the wheel, so returning a modified value is all that is
-needed. The game's own aid on that channel is neutralised for you.
-
----
-
 ## Behaviour notes and gotchas
 
 Collected because they are easy to get wrong and the symptoms are confusing.
@@ -633,6 +394,11 @@ damper law itself, and only when a non-`Native` model is selected.
 game) are gitignored. Keep them that way.
 
 ---
+
+**Only the NWH wheel backend is covered.** The legacy wheel paths are untouched.
+
+**Anti-roll bars and toe are out of scope.** The suspension work polishes the spring and damper that
+are already there.
 
 ## Design notes
 

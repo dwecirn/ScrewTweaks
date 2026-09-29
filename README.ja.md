@@ -2,58 +2,30 @@
 
 [English](README.md) | [中文](README.zh-CN.md) | **日本語**
 
-**Screw Drivers** 用の BepInEx モッドスイートです。**ゲーム自身のパーツデータ**からタイヤとサスペンションの力のモデルを組み直し、4 ウェイのダンパー、ホイールの上下自由度、その上で動く閉ループの ABS とトラクションコントロールを追加します。
+**Screw Drivers** 用の BepInEx モッドスイートです。**ゲーム自身のパーツデータ**からタイヤとサスペンションの力のモデルを組み直し、その上に 4 ウェイのダンパー、上下自由度を持つホイール、閉ループの ABS とトラクションコントロールを載せています。
 
-ゲームのデータを再調整することはありません。どのモデルもパーツがもともと持っている数値だけを読みます —— `FrictionPreset` の B/C/D/E、`loadGripCurve`、`maximumTireGripForce`、`springforce`、`damperforce`、`SuspensionStiffness`。したがって車はパーツの書いてある通りに走り、ストリート仕様とレース仕様の差は、ゲームがもともと意図していた差のままです。
+どのモデルも、パーツがもともと持っている数値だけを読みます —— `FrictionPreset` の B/C/D/E、`loadGripCurve`、`maximumTireGripForce`、`springforce`、`damperforce`、`SuspensionStiffness`。したがって車はパーツの書いてある通りに走り、ストリート仕様とレース仕様の差は、ゲームがもともと意図していた差のままです。
+
+---
 
 ## 何が変わるか
 
-**タイヤの力がスリップカーブから出てきます。** 標準モデルは NWH のハードコードされた `WheelFrictionCurve` から力を組み立て、その**合力ベクトル**を荷重係数でクランプします。つまり前後と左右の要求が同じ円形の予算を共有し、スリップは瞬時です。同梱のモデルは、ゲーム自身の**タイヤ別・路面別**の係数に対して **Pacejka-89 形式の Magic Formula** を評価し、ゲームの `loadGripCurve` でピークをスケールし、**ホイールの回転を自前で積分**します。駆動トルクとブレーキトルクは、力の上限ではなく回転慣性に働きます。
+**タイヤの力がスリップカーブから出てきます。** タイヤ自身の路面別 B/C/D/E に対して **Pacejka-89 形式の Magic Formula** を評価し、ピークはゲームの `loadGripCurve` でスケールします。ホイールの回転はモデルが自前で積分するので、駆動トルクとブレーキトルクは回転慣性に働きます。
 
-**複合スリップは摩擦楕円です。** 2 方向が共有するのは、タイヤ自身の前後／左右の限界で決まる予算であって、円ではありません。**ADAMS** の定式化で、Project Chrono の `ChPac02Tire` と同じものです。前後のピークを超えたホイールは、構造上、横の力を手放します —— フロントがロックすればアンダーステアに、リアならスピンになるのはこのためです。
+**複合スリップ。** **ADAMS の摩擦楕円**、Project Chrono の `ChPac02Tire` が用いている定式化です。前後と左右の要求はタイヤ自身の限界で決まる 1 つの予算を共有し、前後のピークを超えたホイールは横の力を手放します。
 
-**スリップは過渡的です。** 両成分に**緩和長**を持たせています。タイヤは距離をかけて力を立ち上げ、旋回開始時に「車に質量がある」と感じる大半はここから来ます。ゲームへ書き戻すのは**運動学的なスリップ**なので、アシストとドライブトレインは、フィルタ後の値ではなくホイールが実際にやっていることを見ます。
+**過渡スリップ。** 両方のスリップ成分に**緩和長**を持たせ、力は距離をかけて立ち上がります。ゲームへ書き戻すのは**運動学的なスリップ**で、ドライブトレインとアシストが読むのはこれです。
 
-**ホイールに上下の自由度があります。** **2 質量のクォーターカー**です。非簧荷質量はホイールパーツから、タイヤの上下剛性と減衰はサスペンション自身のホイールレートから導き、積分のサブステップ数はスライダーではなく **ω·dt の安定判据**から決めます。鋭い荷重はシャシーに届く前にタイヤが濾し、ホイールは接地を失うこともあります。
+**上下の自由度。** **2 質量のクォーターカー**です。非簧荷質量はホイールパーツから、タイヤの上下剛性と減衰はサスペンション自身のホイールレートから導き、サブステップ数は **ω·dt の安定判据**で決めます。
 
-**ダンパーは 4 ウェイです。** ブローオフ速度の両側に独立した圧縮側・伸張側の係数を持ち、区分線形でニーにおいて連続です。ゲームの単一の対称な係数を置き換えます。サスペンションパーツに保存されるので、車が自分の設定を持ち歩きます。
+**4 ウェイのダンパー。** ブローオフ速度の両側に独立した圧縮側・伸張側の係数を持ち、区分線形でニーにおいて連続です。サスペンションパーツに保存され、車が自分の設定を持ち歩きます。
 
-**ABS とトラクションは閉ループです。** スリップ率を目標に、ゲインと下限を持ち、ホイールごと・物理ステップごとに評価します。担当しているチャンネルでは、ゲーム標準のアシストは無効化されます。
+**閉ループのアシスト。** スリップ率を目標に、ゲインと下限を持ち、ホイールごと・物理ステップごとに評価します。
 
-モデルが差し替え可能だというのは口先の話ではありません。`ITireModel`、`IDamperModel`、`ITireVerticalModel`、`IBrakeAid`/`IDriveAid`、そしてパネルホストはいずれも公開 API で、[独自アルゴリズムの書き方](#独自アルゴリズムの書き方)でひとつずつ実例を示しています。
+モデルは差し替え可能なスロットです。`ITireModel`、`IDamperModel`、`ITireVerticalModel`、`IBrakeAid`/`IDriveAid`、そしてパネルホストはいずれも公開 API で、それぞれの実例は [docs/extending.ja.md](docs/extending.ja.md) にあります。
 
-## やらないこと
-
-- **グリップを増やしません。** ピークは標準モデルと一致するので、変わるのは挙動であって、車が持つグリップ量ではありません。グリップ自体を変えたい場合は `GripScale` があります。
-- **アンチロールバーやトーは追加しません。** サスペンション側で磨いているのは、もともとあるスプリングとダンパーです。
-- **NWH のホイールバックエンドのみ**が対象です。旧来のホイール経路には触れていません。
 
 ---
-
-## 目次
-
-- [何が変わるか](#何が変わるか)
-- [インストール](#インストール)
-- [ソースからのビルド](#ソースからのビルド)
-- [プラグインとキー](#プラグインとキー)
-- [ゲーム内パネル](#ゲーム内パネル)
-- [設定リファレンス](#設定リファレンス)
-  - [タイヤ物理](#タイヤ物理)
-  - [サスペンション物理](#サスペンション物理)
-  - [ECU](#ecu)
-  - [ステアリング](#ステアリング)
-  - [その他のプラグイン](#その他のプラグイン)
-- [独自アルゴリズムの書き方](#独自アルゴリズムの書き方)
-  - [1. パネルセクション](#1-パネルセクション)
-  - [2. タイヤモデル](#2-タイヤモデル)
-  - [3. ダンパーまたはタイヤのモデル](#3-ダンパーまたはタイヤのモデル)
-  - [4. ABS / トラクションアルゴリズム](#4-abs--トラクションアルゴリズム)
-- [挙動の約束と落とし穴](#挙動の約束と落とし穴)
-- [設計メモ](#設計メモ)
-- [サードパーティ](#サードパーティ)
-
----
-
 ## インストール
 
 1. まだなら **BepInEx 5 (x64)** を Screw Drivers フォルダに導入します（`Screw Drivers.exe` の隣に `BepInEx/` と `winhttp.dll` が必要）。
@@ -293,191 +265,6 @@ Instant Steering はもともと車の製作画面にあるサスペンション
 - **Auto Shift** — `dev.dwecirn.screwtweaks.autoshift.cfg` の `General/Enabled`。**F7 → Auto Shift** のチェックボックスと同じ設定です。RPM しきい値を越えてから 0.2 秒でシフトし（バニラは 1 秒）、クールダウンとトルクカットも短くなります。チェックを外すとゲーム本来の値に戻ります。
 - **Engine Sound** — 標準のセレクタがハイブリッド車で落としてしまう側のエンジン音を復活させ、瞬時トルクで両者をミックスします。
 - **Power Factor** — エンジン種別ごとのパワーファクターで、車の保存データと一緒に移動します。**全自動**：Harmony パッチで注入・永続化するため、キーは不要です。
-
----
-
-## 独自アルゴリズムの書き方
-
-このスイートは拡張されることを前提に組まれています。実際に使える拡張ポイントは 4 つ、すべて公開 API です。
-
-拡張するプラグインの DLL を自分のプロジェクトから参照し、**ローカルにコピーしない**設定にします（BepInEx が既に提供しているため）：
-
-```xml
-<Reference Include="ScrewTweaks.ECU">
-  <HintPath>$(GameDir)\BepInEx\plugins\ScrewTweaks.ECU.dll</HintPath>
-  <Private>false</Private>
-</Reference>
-```
-
-読み込み順を正しくするため、依存も宣言します：
-
-```csharp
-[BepInDependency("dev.dwecirn.screwtweaks.ecu")]
-```
-
-### 1. パネルセクション
-
-```csharp
-using ScrewTweaks.Panel;
-
-private void Start() => PanelHost.Register("My Section", DrawSection);
-
-private void DrawSection()
-{
-    GUILayout.Label("hello");
-    if (GUILayout.Button("do a thing")) { /* ... */ }
-}
-```
-
-`Start()` から `PanelHost.Register(title, draw)` を呼びます。描画コールバックはスクロールビュー内で毎フレーム呼ばれるので `GUILayout` を使ってください。同じタイトルで再登録すると、以前のコールバックが置き換わります。
-
-セクションのローカライズは、スイート本体と同じ表を使います。文字列は**英語の原文をキー**にするので、訳が無ければ読みやすい英語に戻り、1 文字列ずつ訳していけます：
-
-```csharp
-using ScrewTweaks.Panel;
-
-// Start() の中で、PanelHost.Register の隣に：
-Loc.Add(PanelLanguage.Japanese, ("hello", "こんにちは"));
-Loc.Add(PanelLanguage.ChineseSimplified, ("hello", "你好"));
-
-// タブのタイトル自体にも 1 つ足せば、タブもローカライズされます
-Loc.Add(PanelLanguage.Japanese, ("My Section", "マイセクション"));
-```
-
-描画コールバック内で `Loc.T("hello")` が訳を返し、`Loc.Tf` はフォーマット文字列を埋めます。自分の文字列以外には触れません。
-
-### 2. タイヤモデル
-
-`ITireModel` を実装して登録します。**すぐに** **Tires** のドロップダウンに現れます。
-
-```csharp
-using ScrewTweaks.Physics.Tires;
-
-public sealed class MyTire : ITireModel
-{
-    public string Name => "MyTire";
-    public string Description => "What it does.";
-
-    // 力の算出とホイール回転の積分まで行ったなら true を返す。
-    // false を返すと、そのステップはゲーム標準の摩擦に任せる。
-    public bool Apply(WheelController wheel, float dt)
-    {
-        // 速度はあらかじめ埋められています：
-        float vx = wheel.forwardFriction.speed;
-        float vy = wheel.sideFriction.speed;
-
-        // ... 自分のモデルで fx, fy を計算 ...
-
-        wheel.forwardFriction.force = fx;
-        wheel.sideFriction.force = fy;
-        wheel.forwardFriction.slip = slipRatio;   // 運動学的スリップ。「落とし穴」参照
-        wheel.sideFriction.slip = slipAngle;
-        // さらに wheel.wheel.angularVelocity を自分で積分する
-        return true;
-    }
-}
-
-// Start() 内：
-TireModels.Register(new MyTire());
-```
-
-### 3. ダンパーまたはタイヤのモデル
-
-ここには同じ接縫の上に 2 つのスロットがあります。`IDamperModel` がダンパーの力の法則、`ITireVerticalModel` がホイールに上下自由度を与えたときのタイヤの上下力です。
-
-`IDamperModel` を実装して登録すると、**Suspension** のドロップダウンにすぐ現れます。
-
-```csharp
-using ScrewTweaks.Physics.Suspension;
-using UnityEngine;
-
-public sealed class MyDamper : IDamperModel
-{
-    public string Name => "MyDamper";
-    public string Description => "例：力が速度の平方根に比例する。";
-
-    // 抵抗力の大きさ [N] を返します。負にしてはいけません。
-    // 向きはあなたの仕事ではありません：宿主が符号（圧縮は上、伸張は下）と接触法線を扱います。
-    public float Evaluate(in DamperState s)
-    {
-        // s.Compressing - 圧縮中は true
-        // s.Velocity    - |m/s|、常に非負
-        // s.GameCoefficient - このホイールについてゲームが算出した係数 C [N*s/m]。車重・ホイール数・
-        //                     パーツの damperforce から作られます。これを基準にすれば、モデルは
-        //                     ゲームの他の部分と同じスケーリングを保てます。
-        // s.Travel、s.CompressionPercent、s.SpringForce、s.Wheel - 必要ならどうぞ。
-        float c = s.GameCoefficient * (s.Compressing ? 1f : 2f);   // 分離は自分で
-        return c * Mathf.Sqrt(s.Velocity);
-    }
-}
-
-// Start() の中で：
-DamperModels.Register(new MyDamper());
-```
-
-接地しているホイールごとに物理ステップ 1 回、ゲームのヒット判定とジオメトリの**後**、力が実際に加わる**前**に呼ばれます。したがってタイヤ荷重・シャシーへの力・サスペンションの音はすべてあなたの数値を見ます。係数が `0` の場所（戦車の履帯ホイール）では、それを基準にしたモデルは何もしません。
-
-`ITireVerticalModel` はもう半分です。`TireVertical/Model` が `Native` でないときだけ呼ばれ、しかも呼ばれる頻度は物理ステップごとではなく**サブステップ**ごとです。
-
-```csharp
-using ScrewTweaks.Physics.Suspension;
-using UnityEngine;
-
-public sealed class MyTyre : ITireVerticalModel
-{
-    public string Name => "MyTyre";
-    public string Description => "例：踏み込むほど硬くなるタイヤ。";
-
-    // 地面がホイールを押し上げる力 [N] を返します。負にしてはいけません。
-    public float Evaluate(in TireVerticalState s)
-    {
-        // s.Deflection         - タイヤが地面に沈んでいる量 [m]。浮いているときは負
-        // s.DeflectionRate     - ホイールと地面の相対速度 [m/s]
-        // s.UnsprungMass       - ホイール自身の質量 [kg]
-        // s.ReferenceStiffness - 宿主がこのホイール用に算出した線形剛性。基準として使いやすい
-        float d = Mathf.Max(s.Deflection, 0f);
-        return s.ReferenceStiffness * d * (1f + d * 20f);   // 漸進的
-    }
-}
-
-// Start() の中で：
-TireVerticalModels.Register(new MyTyre());
-```
-
-### 4. ABS / トラクションアルゴリズム
-
-`IBrakeAid` または `IDriveAid` を実装して登録します。**ECU** のドロップダウンに自動で現れ、設定には**名前で**保存されます。
-
-```csharp
-using ScrewTweaks.ECU;
-using UnityEngine;
-
-public sealed class MyAbs : IBrakeAid
-{
-    public string Name => "MyAbs";
-    public string Description => "Example: bang-bang around the peak slip.";
-
-    public float Apply(in AidContext ctx, float desiredBrake)
-    {
-        if (desiredBrake <= 0f) return desiredBrake;
-
-        // ctx.Controller は NWH のホイールそのもの：荷重、半径、角速度、モーター／ブレーキトルク、
-        // 現在有効な摩擦プリセット、最新のスリップ値。NWH 以外のバックエンドでは null。
-        if (ctx.Controller == null) return desiredBrake;
-
-        float peakSlip = 0.125f;                     // ゲームのアスファルト曲線のピーク位置
-        return Mathf.Abs(ctx.ForwardSlip) > peakSlip ? 0f : desiredBrake;
-    }
-}
-
-// IDriveAid の場合：EcuAids.Register(new MyTraction());
-EcuAids.Register(new MyAbs());
-```
-
-`IBrakeAid` / `IDriveAid` はホイールごと・物理ステップごとに 1 回呼ばれます。**ゲームが自身のトルクを計算した後、ホイールに渡す前**なので、変更後の値を返すだけで十分です。そのチャンネルのゲーム標準アシストは自動的に無効化されます。
-
----
-
 ## 挙動の約束と落とし穴
 
 間違えやすく、しかも症状から原因が分かりにくいものをまとめます。
@@ -504,6 +291,10 @@ EcuAids.Register(new MyAbs());
 `ScrewTweaks/reference/`（Project Chrono のクローン）と `ScrewTweaks/ScrewDrivers/`（逆コンパイルしたゲーム）は gitignore されています。そのままにしてください。
 
 ---
+
+**NWH のホイールバックエンドのみ**が対象です。旧来のホイール経路には触れていません。
+
+**アンチロールバーとトーは対象外です。** サスペンション側で磨いているのは、もともとあるスプリングとダンパーです。
 
 ## 設計メモ
 

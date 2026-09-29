@@ -2,58 +2,30 @@
 
 [English](README.md) | **中文** | [日本語](README.ja.md)
 
-一个面向 **Screw Drivers** 的 BepInEx 模组套件：用**游戏自己的零件数据**重建轮胎与悬挂的受力模型，加上四向可调阻尼、轮子的垂向自由度，以及在它之上运行的闭环 ABS 与牵引力控制。
+一个面向 **Screw Drivers** 的 BepInEx 模组套件：用**游戏自己的零件数据**重建轮胎与悬挂的受力模型，并在其上加入四向可调阻尼、有垂向自由度的轮子，以及闭环的 ABS 与牵引力控制。
 
-游戏的数据一概不做重新平衡。所有模型只读零件本来就带的那些数——`FrictionPreset` 的 B/C/D/E、`loadGripCurve`、`maximumTireGripForce`、`springforce`、`damperforce`、`SuspensionStiffness`——所以车怎么表现取决于它的零件怎么写，而街车与赛车的差别仍然是游戏本来想让你感受到的那个差别。
+所有模型只读零件本来就带的那些数——`FrictionPreset` 的 B/C/D/E、`loadGripCurve`、`maximumTireGripForce`、`springforce`、`damperforce`、`SuspensionStiffness`。所以车的行为取决于它的零件怎么写，而街车与赛车的差别，仍然是游戏本来就打算让你感受到的那个差别。
+
+---
 
 ## 它改变了什么
 
-**轮胎力来自滑移曲线。** 原版模型用 NWH 硬编码的 `WheelFrictionCurve` 拼出受力，再把**合力向量**钳到载荷系数上——于是纵向与横向需求共用同一个圆形预算，而且滑移是瞬时的。随套件附带的模型针对游戏自带的**每轮胎、每路面**系数求值一条 **Pacejka-89 形式的 Magic Formula**，用游戏的 `loadGripCurve` 缩放峰值，并**自行积分轮子转速**——所以驱动与制动力矩作用在转动惯量上，而不是作用在一个力上限上。
+**轮胎力来自滑移曲线。** 针对轮胎自身的每路面 B/C/D/E 求值一条 **Pacejka-89 形式的 Magic Formula**，峰值由游戏的 `loadGripCurve` 缩放；轮子转速由模型自行积分，所以驱动与制动力矩作用在转动惯量上。
 
-**组合滑移是摩擦椭圆。** 两个方向共用的是一个由轮胎自身纵向/横向极限决定的预算，而不是一个圆：**ADAMS** 形式，与 Project Chrono 的 `ChPac02Tire` 一致。超过纵向峰值的轮子，在构造上就会让出横向力——这正是前轮抱死推头、后轮抱死甩尾的来源。
+**组合滑移。** 一个 **ADAMS 摩擦椭圆**，即 Project Chrono 的 `ChPac02Tire` 所用的形式：纵向与横向需求共用一份由轮胎自身极限决定的预算，超过纵向峰值的轮子会让出横向力。
 
-**滑移是瞬态的。** 两个分量各有一条**松弛长度**：轮胎在距离上积累力，而"入弯瞬间就感到车有质量"大半来自这里。回写给游戏的是**运动学滑移**，所以辅助系统与动力总成看到的是轮子真实在做的事，而不是滤波之后的版本。
+**瞬态滑移。** 两个滑移分量各有一条**松弛长度**，力在距离上积累；回写给游戏的是**运动学滑移**，动力总成与辅助系统读到的就是它。
 
-**轮子有垂向自由度。** 一个**两质量四分之一车模型**：非簧载质量取自轮子零件，轮胎的垂向刚度与阻尼由悬挂自身的轮速推导，积分时按 **ω·dt 稳定判据**决定子步数，而不是听某个滑条。尖锐载荷先被轮胎滤掉才轮到车身，而轮子可以离地。
+**垂向自由度。** 一个**两质量四分之一车模型**：非簧载质量取自轮子零件，轮胎的垂向刚度与阻尼由悬挂自身的轮速推导，子步数按 **ω·dt 稳定判据**确定。
 
-**阻尼是四向的。** 卸压速度两侧各有独立的压缩与回弹系数，分段线性、在拐点处连续，替代游戏那个两向共用的单一系数。它存在悬挂零件上，所以每辆车自己带着自己的设定。
+**四向阻尼。** 卸压速度两侧各有独立的压缩与回弹系数，分段线性、在拐点处连续，存在悬挂零件上，所以每辆车带着自己的设定。
 
-**ABS 与牵引力是闭环。** 以滑移率为目标，带增益与下限，每个轮子每个物理步各求值一次；被接管的那条通道上，游戏自带的辅助会被旁通。
+**闭环辅助。** 以滑移率为目标，带增益与下限，每个轮子每个物理步各求值一次。
 
-这些模型可替换并不是纸面上的说法：`ITireModel`、`IDamperModel`、`ITireVerticalModel`、`IBrakeAid`/`IDriveAid` 和面板宿主全是公开 API，[编写自己的算法](#编写自己的算法)逐个演示。
+这些模型是可替换的插槽：`ITireModel`、`IDamperModel`、`ITireVerticalModel`、`IBrakeAid`/`IDriveAid` 与面板宿主都是公开 API，每一个的实例见 [docs/extending.zh-CN.md](docs/extending.zh-CN.md)。
 
-## 它不做什么
-
-- **它不增加抓地力。** 峰值与原生模型一致，所以改变的是行为，而不是车有多少抓地力。想改抓地力本身，用 `GripScale`。
-- **它不加防倾杆，也不加束角。** 悬挂部分打磨的是本来就有的弹簧与阻尼。
-- **只覆盖 NWH 轮子后端。** 旧的轮子路径一概不动。
 
 ---
-
-## 目录
-
-- [它改变了什么](#它改变了什么)
-- [安装](#安装)
-- [从源码构建](#从源码构建)
-- [插件与键位](#插件与键位)
-- [游戏内面板](#游戏内面板)
-- [调参参考](#调参参考)
-  - [轮胎物理](#轮胎物理)
-  - [悬挂物理](#悬挂物理)
-  - [ECU](#ecu)
-  - [转向](#转向)
-  - [其他插件](#其他插件)
-- [编写自己的算法](#编写自己的算法)
-  - [1. 面板板块](#1-面板板块)
-  - [2. 轮胎模型](#2-轮胎模型)
-  - [3. 阻尼或轮胎模型](#3-阻尼或轮胎模型)
-  - [4. ABS / 牵引力算法](#4-abs--牵引力算法)
-- [行为约定与坑](#行为约定与坑)
-- [设计说明](#设计说明)
-- [第三方](#第三方)
-
----
-
 ## 安装
 
 1. 如果还没装，先给 Screw Drivers 目录装好 **BepInEx 5 (x64)**（`Screw Drivers.exe` 旁边要有 `BepInEx/` 和 `winhttp.dll`）。
@@ -294,190 +266,6 @@ Instant Steering 原本是造车界面里每个悬挂的开关。现在它是全
 - **Auto Shift** —— `dev.dwecirn.screwtweaks.autoshift.cfg` 里的 `General/Enabled`，和 **F7 → Auto Shift** 里的勾选框是同一个设置。越过转速阈值后 0.2 秒就换挡（原版 1 秒），冷却和扭矩中断也更短；取消勾选会把游戏自己的数值写回去。
 - **Engine Sound** —— 恢复原版选择器在混动车上丢掉的那一半引擎声音，并按瞬时扭矩把两者混合。
 - **Power Factor** —— 按引擎类型设置的功率系数，随车的存档一起走。**全自动**：通过 Harmony 注入并持久化，不需要键位。
-
----
-
-## 编写自己的算法
-
-整套东西就是为了可扩展而搭的。四个真正的扩展点，全部是公开 API。
-
-你的项目需要引用要扩展的那个插件 DLL，并设为**不本地复制**（BepInEx 已经提供了它）：
-
-```xml
-<Reference Include="ScrewTweaks.ECU">
-  <HintPath>$(GameDir)\BepInEx\plugins\ScrewTweaks.ECU.dll</HintPath>
-  <Private>false</Private>
-</Reference>
-```
-
-并声明依赖，保证加载顺序正确：
-
-```csharp
-[BepInDependency("dev.dwecirn.screwtweaks.ecu")]
-```
-
-### 1. 面板板块
-
-```csharp
-using ScrewTweaks.Panel;
-
-private void Start() => PanelHost.Register("My Section", DrawSection);
-
-private void DrawSection()
-{
-    GUILayout.Label("hello");
-    if (GUILayout.Button("do a thing")) { /* ... */ }
-}
-```
-
-在 `Start()` 里调用 `PanelHost.Register(title, draw)`。绘制回调每帧在一个滚动视图内被调用一次；请使用 `GUILayout`。用同一个标题再次注册会替换掉原来的回调。
-
-板块用和套件本身同一张翻译表来本地化。字符串以**英文原文为键**，所以缺译文时会退回到可读的英文，也可以一个字符串一个字符串地慢慢翻译：
-
-```csharp
-using ScrewTweaks.Panel;
-
-// 在 Start() 里，紧跟 PanelHost.Register 之后：
-Loc.Add(PanelLanguage.Japanese, ("hello", "こんにちは"));
-Loc.Add(PanelLanguage.ChineseSimplified, ("hello", "你好"));
-
-// 给标签页标题本身也加一条，标签页就是本地化的了
-Loc.Add(PanelLanguage.ChineseSimplified, ("My Section", "我的板块"));
-```
-
-之后在绘制回调里 `Loc.T("hello")` 就会返回译文，`Loc.Tf` 用来填格式化占位符。除你自己的字符串之外，别人的东西不会被碰到。
-
-### 2. 轮胎模型
-
-实现 `ITireModel` 并注册。它会**立刻**出现在 **Tires** 下拉里。
-
-```csharp
-using ScrewTweaks.Physics.Tires;
-
-public sealed class MyTire : ITireModel
-{
-    public string Name => "MyTire";
-    public string Description => "What it does.";
-
-    // 返回 true 表示你已经算出了力并积分了轮速。
-    // 返回 false 表示这一步交给游戏自带的摩擦。
-    public bool Apply(WheelController wheel, float dt)
-    {
-        // 速度已经替你读好了：
-        float vx = wheel.forwardFriction.speed;
-        float vy = wheel.sideFriction.speed;
-
-        // ... 用你自己的模型算出 fx, fy ...
-
-        wheel.forwardFriction.force = fx;
-        wheel.sideFriction.force = fy;
-        wheel.forwardFriction.slip = slipRatio;   // 运动学滑移，见"坑"一节
-        wheel.sideFriction.slip = slipAngle;
-        // 并且自己积分 wheel.wheel.angularVelocity
-        return true;
-    }
-}
-
-// 在 Start() 里：
-TireModels.Register(new MyTire());
-```
-
-### 3. 阻尼或轮胎模型
-
-这里有两个扩展点，落在同一处接缝上：`IDamperModel` 管阻尼的力规律，`ITireVerticalModel` 管轮子有了垂向自由度之后轮胎的垂向力。
-
-实现 `IDamperModel` 并注册，它会立刻出现在 **Suspension** 下拉里。
-
-```csharp
-using ScrewTweaks.Physics.Suspension;
-using UnityEngine;
-
-public sealed class MyDamper : IDamperModel
-{
-    public string Name => "MyDamper";
-    public string Description => "例子：力与速度的平方根成正比。";
-
-    // 返回阻力的大小 [N]，永远非负。
-    // 方向不归你管：宿主负责加符号（压缩向上顶、回弹向下拉）和接触法线。
-    public float Evaluate(in DamperState s)
-    {
-        // s.Compressing - 悬挂正在被压缩时为 true
-        // s.Velocity    - |m/s|，永远非负
-        // s.GameCoefficient - 游戏为这个轮子算出的系数 C [N*s/m]，由车重、轮数和零件的
-        //                     damperforce 构成。以它为基准，你的模型就和游戏其余部分一致。
-        // s.Travel、s.CompressionPercent、s.SpringForce、s.Wheel - 需要就用。
-        float c = s.GameCoefficient * (s.Compressing ? 1f : 2f);   // 分离自己算
-        return c * Mathf.Sqrt(s.Velocity);
-    }
-}
-
-// 在 Start() 里：
-DamperModels.Register(new MyDamper());
-```
-
-每个物理步、每个接地轮调用一次，在游戏做完碰撞检测和几何之后、力真正施加之前——所以轮胎载荷、车身受力和减震器音效拿到的都是你的数值。系数为 `0` 的地方（坦克履带轮）以它为基础缩放的模型自然无效果。
-
-`ITireVerticalModel` 是另一半：只有在 `TireVertical/Model` 不是 `Native` 时才会被调用，而且调用频率是每个**子步**一次，不是每个物理步一次。
-
-```csharp
-using ScrewTweaks.Physics.Suspension;
-using UnityEngine;
-
-public sealed class MyTyre : ITireVerticalModel
-{
-    public string Name => "MyTyre";
-    public string Description => "例子：越压越硬的轮胎。";
-
-    // 返回地面把轮子往上顶的力 [N]，永远非负。
-    public float Evaluate(in TireVerticalState s)
-    {
-        // s.Deflection         - 轮胎压入地面多少 [m]，离地时为负
-        // s.DeflectionRate     - 轮子与地面的相对速度 [m/s]
-        // s.UnsprungMass       - 轮子自身质量 [kg]
-        // s.ReferenceStiffness - 宿主为这个轮子算出的线性刚度，适合当基准
-        float d = Mathf.Max(s.Deflection, 0f);
-        return s.ReferenceStiffness * d * (1f + d * 20f);   // 渐进式
-    }
-}
-
-// 在 Start() 里：
-TireVerticalModels.Register(new MyTyre());
-```
-
-### 4. ABS / 牵引力算法
-
-实现 `IBrakeAid` 或 `IDriveAid` 并注册。它会**自动**出现在 **ECU** 下拉里，并在配置里**按名字**保存。
-
-```csharp
-using ScrewTweaks.ECU;
-using UnityEngine;
-
-public sealed class MyAbs : IBrakeAid
-{
-    public string Name => "MyAbs";
-    public string Description => "Example: bang-bang around the peak slip.";
-
-    public float Apply(in AidContext ctx, float desiredBrake)
-    {
-        if (desiredBrake <= 0f) return desiredBrake;
-
-        // ctx.Controller 就是 NWH 的轮子：载荷、半径、角速度、电机/刹车扭矩、
-        // 当前生效的摩擦预设、最新的滑移值。非 NWH 后端时为 null。
-        if (ctx.Controller == null) return desiredBrake;
-
-        float peakSlip = 0.125f;                     // 游戏沥青曲线的峰值位置
-        return Mathf.Abs(ctx.ForwardSlip) > peakSlip ? 0f : desiredBrake;
-    }
-}
-
-// 或者用 IDriveAid：EcuAids.Register(new MyTraction());
-EcuAids.Register(new MyAbs());
-```
-
-`IBrakeAid` / `IDriveAid` 每个轮子每个物理步被调用一次——**在游戏算完自己的扭矩之后、交给轮子之前**，所以你只需要返回修改后的值。该通道上游戏自带的辅助会被自动旁通。
-
----
-
 ## 行为约定与坑
 
 这些很容易做错，而且出问题时的症状很难判断，所以单独列出来。
@@ -504,6 +292,10 @@ EcuAids.Register(new MyAbs());
 `ScrewTweaks/reference/`（Project Chrono 的克隆）和 `ScrewTweaks/ScrewDrivers/`（反编译的游戏）都已被 gitignore。请保持现状。
 
 ---
+
+**只覆盖 NWH 轮子后端。** 旧的轮子路径一概不动。
+
+**不含防倾杆与束角。** 悬挂部分打磨的是本来就有的弹簧与阻尼。
 
 ## 设计说明
 
