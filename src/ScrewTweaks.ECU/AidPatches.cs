@@ -39,10 +39,11 @@ namespace ScrewTweaks.ECU
                 float brake = WheelBrakeRef(__instance);
                 var ctx = Context(__instance, brake);
 
-                // --- brake channel (ABS) ---
-                if (Aids.Abs == AidMode.Progressive && brake > 0f)
+                // --- brake channel ---
+                var brakeAid = Aids.BrakeAid;
+                if (brakeAid != null && brake > 0f)
                 {
-                    float modified = Aids.ProgressiveAbs.Apply(ctx, brake);
+                    float modified = brakeAid.Apply(ctx, brake);
                     if (!Mathf.Approximately(modified, brake))
                     {
                         WheelBrakeRef(__instance) = modified;
@@ -50,13 +51,14 @@ namespace ScrewTweaks.ECU
                     }
                 }
 
-                // --- drive channel (traction) ---
-                if (Aids.Traction == AidMode.Progressive)
+                // --- drive channel ---
+                var driveAid = Aids.DriveAid;
+                if (driveAid != null)
                 {
                     float torque = __instance.currentTorque;
                     if (torque != 0f)
                     {
-                        float modified = Aids.ProgressiveTraction.Apply(ctx, torque);
+                        float modified = driveAid.Apply(ctx, torque);
                         if (!Mathf.Approximately(modified, torque))
                         {
                             __instance.currentTorque = modified;
@@ -74,13 +76,14 @@ namespace ScrewTweaks.ECU
         {
             try
             {
-                if (Aids.Abs != AidMode.Progressive) return;
+                var aid = Aids.BrakeAid;
+                if (aid == null) return;
                 if (Skip(__instance.DrivingCar) || InAir(__instance.UseNWH, __instance.WheelController)) return;
 
                 float raw = BrakeWheelBrakeRef(__instance);
                 if (raw <= 0f) return;
 
-                float modified = Aids.ProgressiveAbs.Apply(Context(__instance, raw), raw);
+                float modified = aid.Apply(Context(__instance, raw), raw);
                 if (Mathf.Approximately(modified, raw)) return;
 
                 BrakeWheelBrakeRef(__instance) = modified;
@@ -105,6 +108,7 @@ namespace ScrewTweaks.ECU
         private static AidContext Context(MechanicalOutputWheel wheel, float desiredBrake) => new AidContext
         {
             Wheel = wheel,
+            Controller = wheel.UseNWH ? wheel.WheelController : null,
             ForwardSlip = ForwardSlip(wheel.UseNWH, wheel.WheelController, wheel.WheelCollider),
             SidewaySlip = SidewaySlip(wheel.UseNWH, wheel.WheelController),
             WheelRpm = WheelRpm(wheel.UseNWH, wheel.WheelController, wheel.WheelCollider),
@@ -114,6 +118,7 @@ namespace ScrewTweaks.ECU
 
         private static AidContext Context(MechanicalOutputWheelBrake wheel, float desiredBrake) => new AidContext
         {
+            Controller = wheel.UseNWH ? wheel.WheelController : null,
             ForwardSlip = ForwardSlip(wheel.UseNWH, wheel.WheelController, wheel.WheelCollider),
             SidewaySlip = SidewaySlip(wheel.UseNWH, wheel.WheelController),
             WheelRpm = WheelRpm(wheel.UseNWH, wheel.WheelController, wheel.WheelCollider),

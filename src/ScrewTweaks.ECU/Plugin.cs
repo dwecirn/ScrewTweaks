@@ -1,6 +1,7 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using BepInEx;
 using BepInEx.Configuration;
@@ -25,17 +26,19 @@ namespace ScrewTweaks.ECU
 
         private void Awake()
         {
+            Aids.Init();
+
             Aids.AbsConfig = Config.Bind(
                 "Channels",
                 "Abs",
-                nameof(AidMode.Native),
-                "ABS algorithm. Native = game default, Off = no ABS, Progressive = hold a target slip.");
+                Aids.NativeName,
+                "ABS algorithm. Native = game default, Off = no ABS, otherwise the name of a registered algorithm (e.g. Progressive).");
 
             Aids.TractionConfig = Config.Bind(
                 "Channels",
                 "Traction",
-                nameof(AidMode.Native),
-                "Traction control algorithm. Native = game default, Off = no TCS.");
+                Aids.NativeName,
+                "Traction control algorithm. Native = game default, Off = no TCS, otherwise the name of a registered algorithm.");
 
             Aids.AbsTargetConfig = Config.Bind("Abs", "TargetSlip", 0.12f, "Slip ratio the progressive ABS aims to hold. The game's asphalt curve peaks at ~0.125, so a target above that is already past peak grip.");
             Aids.AbsGainConfig = Config.Bind("Abs", "Gain", 6f, "How hard the brake is cut as slip exceeds the target. At gain 6 a slip of ~0.29 releases the brake fully.");
@@ -56,8 +59,8 @@ namespace ScrewTweaks.ECU
 
         private void DrawSection()
         {
-            DrawDropdown("ABS", Aids.Abs, ref _absOpen, SetAbs, new[] { AidMode.Native, AidMode.Off, AidMode.Progressive });
-            if (Aids.Abs == AidMode.Progressive)
+            DrawDropdown("ABS", Aids.BrakeSelection, ref _absOpen, SetAbs, Aids.BrakeNames());
+            if (Aids.BrakeAid != null)
             {
                 DrawSlider("  Target slip", Aids.AbsTargetConfig, 0.02f, 0.60f, "0.00");
                 DrawSlider("  Gain", Aids.AbsGainConfig, 0.5f, 12f, "0.0");
@@ -65,8 +68,8 @@ namespace ScrewTweaks.ECU
             }
 
             GUILayout.Space(10f);
-            DrawDropdown("Traction", Aids.Traction, ref _tractionOpen, SetTraction, new[] { AidMode.Native, AidMode.Off, AidMode.Progressive });
-            if (Aids.Traction == AidMode.Progressive)
+            DrawDropdown("Traction", Aids.DriveSelection, ref _tractionOpen, SetTraction, Aids.DriveNames());
+            if (Aids.DriveAid != null)
             {
                 DrawSlider("  Target slip", Aids.TractionTargetConfig, 0.02f, 0.60f, "0.00");
                 DrawSlider("  Cut gain", Aids.TractionGainConfig, 0.5f, 12f, "0.0");
@@ -74,9 +77,10 @@ namespace ScrewTweaks.ECU
 
             GUILayout.Space(10f);
             GUILayout.Label("Changes apply live and are saved to the config file.");
+            GUILayout.Label("Other plugins can add algorithms: EcuAids.Register(...).");
         }
 
-        private static void DrawDropdown(string label, AidMode current, ref bool open, Action<AidMode> onChange, AidMode[] modes)
+        private static void DrawDropdown(string label, string current, ref bool open, Action<string> onChange, List<string> modes)
         {
             GUILayout.BeginHorizontal();
             GUILayout.Label(label, GUILayout.Width(80f));
@@ -113,15 +117,15 @@ namespace ScrewTweaks.ECU
                 entry.Value = value;
         }
 
-        private void SetAbs(AidMode mode)
+        private void SetAbs(string name)
         {
-            if (Aids.AbsConfig != null) Aids.AbsConfig.Value = mode.ToString();
+            if (Aids.AbsConfig != null) Aids.AbsConfig.Value = name;
             Aids.ReapplyAll();
         }
 
-        private void SetTraction(AidMode mode)
+        private void SetTraction(string name)
         {
-            if (Aids.TractionConfig != null) Aids.TractionConfig.Value = mode.ToString();
+            if (Aids.TractionConfig != null) Aids.TractionConfig.Value = name;
             Aids.ReapplyAll();
         }
     }

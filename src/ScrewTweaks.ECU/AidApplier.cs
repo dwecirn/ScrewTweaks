@@ -39,12 +39,11 @@ namespace ScrewTweaks.ECU
             }
 
             // ABS: neutralise the binary brake release unless we are on Native.
-            wheel.slipLimitBrake = Aids.Abs == AidMode.Native ? state.SlipLimitBrake : float.MaxValue;
+            wheel.slipLimitBrake = Aids.BrakeManaged ? float.MaxValue : state.SlipLimitBrake;
 
             // TCS: neutralise the slip cut and the lateral torque suppression.
-            bool tractionManaged = Aids.Traction != AidMode.Native;
-            wheel.slipLimit = tractionManaged ? float.MaxValue : state.SlipLimit;
-            wheel.sidewaySpeedSupress = tractionManaged ? float.MaxValue : state.SidewaySpeedSupress;
+            wheel.slipLimit = Aids.DriveManaged ? float.MaxValue : state.SlipLimit;
+            wheel.sidewaySpeedSupress = Aids.DriveManaged ? float.MaxValue : state.SidewaySpeedSupress;
         }
 
         internal static void Apply(MechanicalOutputWheelBrake wheel)
@@ -56,7 +55,7 @@ namespace ScrewTweaks.ECU
                 state.Captured = true;
             }
 
-            wheel.slipLimitBrake = Aids.Abs == AidMode.Native ? state.SlipLimitBrake : float.MaxValue;
+            wheel.slipLimitBrake = Aids.BrakeManaged ? float.MaxValue : state.SlipLimitBrake;
         }
     }
 }
