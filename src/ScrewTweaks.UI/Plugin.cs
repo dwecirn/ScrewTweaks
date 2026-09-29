@@ -11,7 +11,7 @@ namespace ScrewTweaks.UI
     {
         public const string GUID = "dev.dwecirn.screwtweaks.ui";
         public const string Name = "Screw Tweaks - UI";
-        public const string Version = "0.1.0";
+        public const string Version = PluginVersion.Value;
     }
 
     [BepInPlugin(PluginInfo.GUID, PluginInfo.Name, PluginInfo.Version)]

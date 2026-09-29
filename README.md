@@ -70,6 +70,16 @@ Every plugin is copied into `BepInEx/plugins` automatically after a successful b
 Key bindings are compile-time defaults in `keybinds.props` and can be overridden at runtime in the
 plugin's `.cfg`.
 
+### Versioning
+
+Each plugin has its own version, set in exactly one place: `<Version>` in that plugin's `.csproj`.
+The `[BepInPlugin]` version string and the DLL metadata are generated from it, so there is nothing
+else to keep in sync. To see every plugin's version at once:
+
+```powershell
+dotnet build ScrewTweaks.sln --no-restore -m:1 -t:ListVersions
+```
+
 ---
 
 ## Plugins and keys

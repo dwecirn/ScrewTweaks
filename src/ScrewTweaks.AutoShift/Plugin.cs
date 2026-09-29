@@ -13,7 +13,7 @@ namespace ScrewTweaks.AutoShift
     {
         public const string GUID = "dev.dwecirn.screwtweaks.autoshift";
         public const string Name = "Screw Tweaks - Auto Shift";
-        public const string Version = "0.1.0";
+        public const string Version = PluginVersion.Value;
     }
 
     [BepInPlugin(PluginInfo.GUID, PluginInfo.Name, PluginInfo.Version)]

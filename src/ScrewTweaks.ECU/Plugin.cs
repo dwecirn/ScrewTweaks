@@ -9,13 +9,15 @@ using HarmonyLib;
 using ScrewTweaks.UI;
 using UnityEngine;
 
+using ScrewTweaks.ECU.Generated;
+
 namespace ScrewTweaks.ECU
 {
     public static class PluginInfo
     {
         public const string GUID = "dev.dwecirn.screwtweaks.ecu";
         public const string Name = "Screw Tweaks - ECU";
-        public const string Version = "0.1.0";
+        public const string Version = PluginVersion.Value;
     }
 
     [BepInPlugin(PluginInfo.GUID, PluginInfo.Name, PluginInfo.Version)]

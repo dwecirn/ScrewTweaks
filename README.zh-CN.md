@@ -59,6 +59,14 @@ dotnet build ScrewTweaks.sln --no-restore -m:1
 
 键位是 `keybinds.props` 里的编译期默认值，可在插件自己的 `.cfg` 里运行时覆盖。
 
+### 版本号
+
+每个插件有**自己独立的版本**，并且只在一个地方定义：该插件 `.csproj` 里的 `<Version>`。`[BepInPlugin]` 的版本字符串和 DLL 元数据都由它生成，所以没有第二处需要同步。想一次看到所有插件的版本：
+
+```powershell
+dotnet build ScrewTweaks.sln --no-restore -m:1 -t:ListVersions
+```
+
 ---
 
 ## 插件与键位

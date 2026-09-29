@@ -104,4 +104,29 @@
     </ItemGroup>
   </Target>
 
+  <!--
+    Generates a PluginVersion constant from the project's own <Version>, so each plugin keeps an
+    independent version with exactly one source of truth (its .csproj) and [BepInPlugin] still gets
+    a compile-time constant.
+  -->
+  <Target Name="GeneratePluginVersion" BeforeTargets="CoreCompile">
+    <PropertyGroup>
+      <_PluginVersionFile>$(IntermediateOutputPath)PluginVersion.g.cs</_PluginVersionFile>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(_PluginVersionFile)" Overwrite="true"
+      Lines="// &lt;auto-generated/&gt; from the project's &lt;Version&gt;;namespace $(AssemblyName).Generated;{;    public static class PluginVersion;    {;        public const string Value = &quot;$(Version)&quot;%3B;    };}"
+      WriteOnlyWhenDifferent="true" />
+    <ItemGroup>
+      <Compile Include="$(_PluginVersionFile)" />
+      <FileWrites Include="$(_PluginVersionFile)" />
+    </ItemGroup>
+  </Target>
+
+  <!--
+    `dotnet build ScrewTweaks.sln -t:ListVersions` prints every plugin's version, for release time.
+  -->
+  <Target Name="ListVersions">
+    <Message Importance="high" Text="  $(AssemblyName)  $(Version)" />
+  </Target>
+
 </Project>

@@ -4,13 +4,15 @@ using System.Reflection;
 using BepInEx;
 using HarmonyLib;
 
+using ScrewTweaks.PowerFactor.Generated;
+
 namespace ScrewTweaks.PowerFactor
 {
     public static class PluginInfo
     {
         public const string GUID = "dev.dwecirn.screwtweaks.powerfactor";
         public const string Name = "Screw Tweaks - Power Factor";
-        public const string Version = "0.1.0";
+        public const string Version = PluginVersion.Value;
     }
 
     [BepInPlugin(PluginInfo.GUID, PluginInfo.Name, PluginInfo.Version)]

@@ -59,6 +59,14 @@ dotnet build ScrewTweaks.sln --no-restore -m:1
 
 キー割り当ては `keybinds.props` のコンパイル時デフォルトで、各プラグインの `.cfg` から実行時に上書きできます。
 
+### バージョン
+
+各プラグインは**独自のバージョン**を持ち、定義は一か所だけ：そのプラグインの `.csproj` にある `<Version>` です。`[BepInPlugin]` のバージョン文字列と DLL のメタデータはそこから生成されるため、他に同期する場所はありません。全プラグインのバージョンを一度に確認するには：
+
+```powershell
+dotnet build ScrewTweaks.sln --no-restore -m:1 -t:ListVersions
+```
+
 ---
 
 ## プラグインとキー
