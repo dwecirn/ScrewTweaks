@@ -512,3 +512,26 @@ in the car builder.
 
 Lesson: before adding an ECU control, search for the existing mechanism. Adding one the game
 already has violates the fidelity policy above and duplicates tuning the player already owns.
+
+### 18.2 Camber (2026-09)
+
+The game supplies camber but does nothing with it:
+
+- `camberangle` is a **suspension-part** property (`CarAnalyzer2` -> `Camber`,
+  `WheelPropertiesSetter` -> degrees as `Camber * 0.1`). Every wheel part has
+  `CamberTop`/`CamberBottom` = 0, so all camber comes from the suspension part.
+- `WheelController.WheelUpdate` recomputes `wheel.camberAngle` every physics step from the spring
+  compression (`Lerp(camberAtTop, camberAtBottom, 1 - compressionPercent)`), i.e. the suspension
+  setting plus the travel-induced change, and `CalculateWheelDirectionsAndRotations` tilts the
+  contact frame with it - so the slip angle already sees camber - but it produces **no force**.
+
+The model adds, all driven by `wheel.camberAngle`:
+
+| effect | formula | MF equivalent |
+|---|---|---|
+| camber thrust | `Fy += k * camberDeg * Fz` | `Svy` |
+| camber softens the tire | `peakSlipScale *= 1 - 1.2 * |gamma_rad|` | `PKY3` (cornering stiffness down -> peak later) |
+| lateral peak drops | `sideMax *= 1 - 3 * gamma_rad^2` | `PDY3` |
+
+`CamberDynamics` scales all three (0 = thrust only, 1 = typical coefficients). Nothing changes at
+zero camber, which is the default, so this only shows up for cars that actually run camber.

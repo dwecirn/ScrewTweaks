@@ -11,6 +11,7 @@ namespace ScrewTweaks.Physics.Tires
         internal static ConfigEntry<float>? CombinedSlipConfig;
         internal static ConfigEntry<float>? RelaxationLengthConfig;
         internal static ConfigEntry<float>? GeometryShapeCouplingConfig;
+        internal static ConfigEntry<float>? CamberDynamicsConfig;
 
         internal static float GripScale => GripScaleConfig?.Value ?? 1f;
         internal static float CamberThrust => CamberThrustConfig?.Value ?? 0.015f;
@@ -27,5 +28,12 @@ namespace ScrewTweaks.Physics.Tires
         /// cannot see, so this is exposed as a strength and set to 0 to disable.
         /// </summary>
         internal static float GeometryShapeCoupling => GeometryShapeCouplingConfig?.Value ?? 1f;
+
+        /// <summary>
+        /// Strength of the camber effects other than thrust: how much camber softens the tyre
+        /// (cornering stiffness down -> the curve peaks later) and lowers the lateral peak.
+        /// 0 = camber contributes thrust only. 1 = typical MF coefficients (PKY3 1.2, PDY3 3).
+        /// </summary>
+        internal static float CamberDynamics => CamberDynamicsConfig?.Value ?? 1f;
     }
 }

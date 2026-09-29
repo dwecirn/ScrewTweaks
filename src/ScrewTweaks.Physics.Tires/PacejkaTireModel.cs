@@ -94,15 +94,34 @@ namespace ScrewTweaks.Physics.Tires
             float fwdMax = Mathf.Abs(d) * loadCoeff * wc.forwardFriction.forceCoefficient;
             float sideMax = Mathf.Abs(d) * loadCoeff * wc.sideFriction.forceCoefficient;
 
+            // --- camber ---
+            // Read straight from the wheel, which the game already drives from the suspension's
+            // camber-angle part property and the travel-induced camber change. The native model
+            // only tilts the contact frame with it; it produces no camber force at all.
+            float camberDeg = wheel.camberAngle;
+            float camberRad = camberDeg * Mathf.Deg2Rad;
+
+            float peakSlipScale = parameters.PeakSlipScale;
+            float dynamics = TireTuning.CamberDynamics;
+            if (dynamics > 0f)
+            {
+                // A cambered tyre is a softer tyre: cornering stiffness drops roughly linearly with
+                // |camber| (MF PKY3), so the slip curve peaks *later*, and the lateral peak itself
+                // falls with camber squared (PDY3).
+                float absCamber = Mathf.Abs(camberRad);
+                peakSlipScale = Mathf.Clamp(peakSlipScale * (1f - 1.2f * dynamics * absCamber), 0.25f, 4f);
+                sideMax *= Mathf.Clamp(1f - 3f * dynamics * camberRad * camberRad, 0.5f, 1f);
+            }
+
             // --- pure slip (the game's BCDE is the shape; D is factored into the max) ---
-            // PeakSlipScale moves where the curve peaks, per tire (contact patch geometry).
-            float kappaEff = kappa * wc.forwardFriction.slipCoefficient * parameters.PeakSlipScale;
-            float alphaEff = alpha * wc.sideFriction.slipCoefficient * parameters.PeakSlipScale;
+            // PeakSlipScale moves where the curve peaks, per tire and per camber.
+            float kappaEff = kappa * wc.forwardFriction.slipCoefficient * peakSlipScale;
+            float alphaEff = alpha * wc.sideFriction.slipCoefficient * peakSlipScale;
             float fxPure = fwdMax * Mf(b, c, e, kappaEff);
             float fyPure = sideMax * Mf(b, c, e, alphaEff);
 
             // --- camber thrust (native has none) is part of the lateral force ---
-            float camberThrust = parameters.CamberThrust * wheel.camberAngle * fz;
+            float camberThrust = parameters.CamberThrust * camberDeg * fz;
             fyPure += camberThrust;
 
             // --- combined slip: ADAMS friction ellipse ---
@@ -145,8 +164,8 @@ namespace ScrewTweaks.Physics.Tires
                 Omega = omega,
                 Radius = radius,
                 Sigma = parameters.SigmaA,
-                PeakSlipScale = parameters.PeakSlipScale,
-                CamberDeg = wheel.camberAngle,
+                PeakSlipScale = peakSlipScale,
+                CamberDeg = camberDeg,
                 CamberThrustForce = camberThrust,
                 HasIdentity = hasIdentity,
                 TireType = hasIdentity ? identity.Type : PartType.NONE,
