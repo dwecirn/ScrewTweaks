@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
 using ScrewTweaks.Panel;
+using TMPro;
 using UnityEngine;
 
 namespace ScrewTweaks.Physics.Suspension
@@ -334,16 +335,17 @@ namespace ScrewTweaks.Physics.Suspension
                         newGo.transform.localPosition = oldGo.transform.localPosition;
                     }
 
-                    var oldElem = oldGo != null ? oldGo.GetComponent<GUIPropertiesElement>() : null;
+                    // Range before value: the prefab is the Damper Force slider and stops at 100, so a
+                    // coefficient of 320 would be clamped on the way in.
+                    Widen(newGo);
+                    Caption(newGo, property.DisplayName);
+
                     var newElem = newGo.GetComponent<GUIPropertiesElement>();
                     if (newElem != null)
                     {
-                        newElem.DisplayName = oldElem != null ? oldElem.DisplayName : property.DisplayName;
                         newElem.PropertyName = property.PropertyName;
                         newElem.InputValue = property.PropertyType.ToString();
                     }
-
-                    Widen(newGo);
 
                     __instance.InstObjects[index] = newGo;
                     if (oldGo != null) UnityEngine.Object.Destroy(oldGo);
@@ -352,6 +354,24 @@ namespace ScrewTweaks.Physics.Suspension
             catch
             {
                 // never break the builder
+            }
+        }
+
+        /// <summary>
+        /// Replace the prefab's own caption. It is the game's "Damper Force" label, carried by a
+        /// localisation component on a child text; left alone, every injected row would read "Damper
+        /// Force" as well - which looks exactly like the game's row having been duplicated.
+        /// </summary>
+        private static void Caption(GameObject element, string caption)
+        {
+            foreach (var component in element.GetComponentsInChildren<Component>(true))
+            {
+                if (component == null) continue;
+                if (component.GetType().Name.IndexOf("LocalizeString", StringComparison.Ordinal) < 0) continue;
+
+                var text = component.GetComponent<TextMeshProUGUI>();
+                if (text != null) text.text = caption;
+                UnityEngine.Object.Destroy(component);
             }
         }
 
