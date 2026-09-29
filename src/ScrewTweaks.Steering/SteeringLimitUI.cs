@@ -117,11 +117,11 @@ namespace ScrewTweaks.Steering
             {
                 var instant = FindRow(__instance, InstantLabel)?.GetComponent<MultiSelect>();
                 if (instant != null)
-                    SteeringSettings.InstantSteering = instant.CurrentlySelectedIndex == 1;
+                    SteeringSettings.SetInstant(instant.CurrentlySelectedIndex == 1);
 
                 var relax = FindRow(__instance, RelaxLabel)?.GetComponent<Slider>();
                 if (relax != null)
-                    SteeringSettings.LimitRelax = relax.ActualValue;
+                    SteeringSettings.SetLimitRelax(relax.ActualValue);
             }
             catch
             {

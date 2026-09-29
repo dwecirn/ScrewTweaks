@@ -18,13 +18,12 @@ namespace ScrewTweaks.Steering
     ///   newValue = value + (1 - value) * relax      (relax 0..1)
     /// relax = 0 -> vanilla, relax = 1 -> same as the game's "ignore steer angle limit".
     ///
-    /// The value is stored in Saveables under <see cref="Key"/> and edited from the settings UI.
+    /// The value lives in the mod's own config (<see cref="SteeringSettings"/>) and is edited from the
+    /// game's controls page or from the panel.
     /// </summary>
     [HarmonyPatch]
     internal static class SteeringLimitRelax
     {
-        internal const string Key = SteeringSettings.LimitRelaxKey;
-
         private sealed class State
         {
             internal AnimationCurve? Original;
@@ -39,8 +38,7 @@ namespace ScrewTweaks.Steering
 
         internal static float Get()
         {
-            try { return Mathf.Clamp01(Saveables.GetValueFloat(Key, 0f)); }
-            catch { return 0f; }
+            return SteeringSettings.LimitRelax;
         }
 
         [HarmonyPrefix]

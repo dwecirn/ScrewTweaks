@@ -20,6 +20,23 @@ namespace ScrewTweaks.Steering
     [BepInPlugin(PluginInfo.GUID, PluginInfo.Name, PluginInfo.Version)]
     public class Plugin : BaseUnityPlugin
     {
+        private void Awake()
+        {
+            SteeringSettings.LimitRelaxConfig = Config.Bind(
+                "Steering",
+                "LimitRelax",
+                0.0f,
+                "How much of the game's speed-sensitive steering limit to blend away, 0 to 1. " +
+                "0 = the game's own limit. Also on the game's controls page, next to Instant Steering.");
+
+            SteeringSettings.InstantConfig = Config.Bind(
+                "Steering",
+                "InstantSteering",
+                false,
+                "Apply binary (keyboard / d-pad) steering input in one frame instead of ramping it, the " +
+                "way an analog stick already behaves. Also on the game's controls page.");
+        }
+
         private void Start()
         {
             Localize();
@@ -71,7 +88,7 @@ namespace ScrewTweaks.Steering
             bool wanted = GUILayout.Toggle(instant, Loc.T(" Instant steering"));
             if (wanted != instant)
             {
-                SteeringSettings.InstantSteering = wanted;
+                SteeringSettings.SetInstant(wanted);
                 SteeringSpeedApplier.ApplyToAll();
             }
 
@@ -84,7 +101,7 @@ namespace ScrewTweaks.Steering
             float relax = GUILayout.HorizontalSlider(SteeringSettings.LimitRelax, 0f, 1f, GUILayout.Width(120f));
             GUILayout.EndHorizontal();
             if (!Mathf.Approximately(relax, SteeringSettings.LimitRelax))
-                SteeringSettings.LimitRelax = relax;
+                SteeringSettings.SetLimitRelax(relax);
 
             GUILayout.Label(Loc.T("Blends the game's speed-sensitive steering limit toward none. 0 = vanilla."));
 

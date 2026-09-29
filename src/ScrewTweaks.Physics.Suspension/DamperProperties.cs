@@ -6,6 +6,7 @@ using System.Linq;
 using HarmonyLib;
 using ScrewTweaks.Panel;
 using TMPro;
+using SappUI;
 using UnityEngine;
 
 namespace ScrewTweaks.Physics.Suspension
@@ -347,6 +348,7 @@ namespace ScrewTweaks.Physics.Suspension
                     // coefficient of 320 would be clamped on the way in.
                     Widen(newGo);
                     Caption(newGo, property.DisplayName);
+                    Register(oldGo, newGo);
 
                     var newElem = newGo.GetComponent<GUIPropertiesElement>();
                     if (newElem != null)
@@ -381,6 +383,37 @@ namespace ScrewTweaks.Physics.Suspension
                 if (text != null) text.text = caption;
                 UnityEngine.Object.Destroy(component);
             }
+        }
+
+        /// <summary>
+        /// Put the clone into the panel's controller navigation.
+        ///
+        /// A row registers itself in its own Start(), but the manager builds and registers its rows - the
+        /// placeholders we replace - before that, and a row that is not in the navigation cannot be
+        /// selected with a gamepad. Its left/right arrows are exactly what a gamepad drives, so without
+        /// this the arrows do nothing on our rows while they work on the game's own.
+        /// </summary>
+        private static void Register(GameObject? replaced, GameObject clone)
+        {
+            var element = clone.GetComponent<ControllerNavigationElement>();
+            if (element == null) return;
+
+            var navigation = replaced != null
+                ? AccessTools.Field(typeof(ControllerNavigationElement), "_controllerNavigation")
+                    ?.GetValue(replaced.GetComponent<ControllerNavigationElement>()) as ControllerNavigation
+                : null;
+            if (navigation == null) navigation = clone.GetComponentInParent<ControllerNavigation>(true);
+            if (navigation == null) return;
+
+            // Neither of these should be inherited from a placeholder, and skipping the refresh would
+            // leave the row in the list but without neighbours.
+            AccessTools.Field(typeof(ControllerNavigationElement), "excludeFromControllerNavigation")
+                ?.SetValue(element, false);
+            AccessTools.Field(typeof(ControllerNavigationElement), "skipRefreshingControllerNav")
+                ?.SetValue(element, false);
+
+            navigation.DeregisterControllerNavigationElement(element);
+            navigation.RegisterControllerNavigationElement(element, false);
         }
 
         /// <summary>

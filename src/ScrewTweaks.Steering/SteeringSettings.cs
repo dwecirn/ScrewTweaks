@@ -1,68 +1,50 @@
 #nullable enable
 
-using SappUnityUtils.IO.SimpleSaveables;
+using BepInEx.Configuration;
 using UnityEngine;
 
 namespace ScrewTweaks.Steering
 {
     /// <summary>
-    /// The two steering settings, both stored in the game's own settings save rather than in the mod's
-    /// config, because both of them are things the *game's* controls page edits: they show up there next
-    /// to each other, and the panel shows them too. One storage, two editors, so they cannot drift apart.
+    /// The two steering settings, stored in the mod's own config like everything else the player tunes.
     ///
-    /// (They used to be a per-suspension-part property for Instant Steering and a Saveables value for the
-    /// limit; the per-part one is gone so the two sit together and apply to the whole game.)
+    /// Both are also edited from the game's controls page, which is why they live behind this one class:
+    /// the page's two rows and the panel's controls read and write the same entries, so the two views
+    /// cannot disagree.
     /// </summary>
     internal static class SteeringSettings
     {
+        internal static ConfigEntry<float>? LimitRelaxConfig;
+        internal static ConfigEntry<bool>? InstantConfig;
+
         /// <summary>How much of the game's speed-sensitive steering limit to blend away, 0..1.</summary>
-        internal const string LimitRelaxKey = "screwtweaks_steerlimitrelax";
+        internal static float LimitRelax => Mathf.Clamp01(LimitRelaxConfig?.Value ?? 0f);
+
+        internal static void SetLimitRelax(float value)
+        {
+            if (LimitRelaxConfig != null) LimitRelaxConfig.Value = Mathf.Clamp01(value);
+        }
 
         /// <summary>Whether binary steering input is applied instantly instead of being ramped.</summary>
-        internal const string InstantKey = "screwtweaks_instantsteering";
+        internal static bool InstantSteering => InstantConfig?.Value ?? false;
 
-        private static float _cachedInstant = -1f;
-
-        internal static float LimitRelax
+        internal static void SetInstant(bool value)
         {
-            get
-            {
-                try { return Mathf.Clamp01(Saveables.GetValueFloat(LimitRelaxKey, 0f)); }
-                catch { return 0f; }
-            }
-            set
-            {
-                try { Saveables.SetValue(LimitRelaxKey, Mathf.Clamp01(value)); }
-                catch { /* ignore */ }
-            }
+            if (InstantConfig != null) InstantConfig.Value = value;
         }
 
-        internal static bool InstantSteering
-        {
-            get
-            {
-                try { return Saveables.GetValueFloat(InstantKey, 0f) > 0.5f; }
-                catch { return false; }
-            }
-            set
-            {
-                try { Saveables.SetValue(InstantKey, value ? 1f : 0f); }
-                catch { /* ignore */ }
-            }
-        }
+        private static bool _cachedInstant;
 
         /// <summary>
         /// True when Instant Steering changed since the last check, whoever changed it - the panel, the
-        /// game's controls page, or a hand-edited save. The caller reapplies it to the running cars.
+        /// game's controls page, or a hand-edited config. The caller reapplies it to the running cars.
         /// </summary>
         internal static bool ConsumeInstantChange()
         {
-            float now = InstantSteering ? 1f : 0f;
-            if (Mathf.Approximately(now, _cachedInstant)) return false;
-
-            bool first = _cachedInstant < 0f;
+            bool now = InstantSteering;
+            if (now == _cachedInstant) return false;
             _cachedInstant = now;
-            return !first;
+            return true;
         }
     }
 }
