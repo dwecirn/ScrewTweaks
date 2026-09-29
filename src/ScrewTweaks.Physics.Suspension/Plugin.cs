@@ -131,10 +131,9 @@ namespace ScrewTweaks.Physics.Suspension
                 ("  (no car yet)", "  （暂无车辆）"),
                 ("The game's Damper Force is still the base; these four are its shape.",
                     "游戏自带的 Damper Force 仍是基准，这四项是它的形状。"),
-                ("They are only read while a damper model is selected. Native leaves the game's own damper in",
-                    "只有在选中阻尼模型时才会读取。Native 让游戏自带的阻尼全权负责、不读它们，"),
-                ("charge and does not read them, but they are still saved with the car either way.",
-                    "但无论哪种模式，它们都会随车一起保存。"),
+                ("Damper setup", "阻尼设置"),
+                ("They are only read while a damper model is selected. Native leaves the game's own damper in charge and does not read them, but they are still saved with the car either way.",
+                    "只有在选中阻尼模型时才会读取。Native 让游戏自带的阻尼全权负责、不读它们，但无论哪种模式，它们都会随车一起保存。"),
                 ("Pull-down floor", "下拉下限"),
                 ("Stiffness and damping are derived from the wheel part's mass and the suspension part's wheel rate. There is nothing to set.",
                     "刚度和阻尼由轮子零件的质量与悬挂零件的轮速（wheel rate）推导，没有可调项。"),
@@ -171,10 +170,9 @@ namespace ScrewTweaks.Physics.Suspension
                 ("  (no car yet)", "  （車がありません）"),
                 ("The game's Damper Force is still the base; these four are its shape.",
                     "ゲームの Damper Force が引き続き基準で、この 4 つはその形を決めます。"),
-                ("They are only read while a damper model is selected. Native leaves the game's own damper in",
-                    "読み込まれるのはダンパーモデルを選んでいるときだけです。Native ではゲーム標準のダンパーが"),
-                ("charge and does not read them, but they are still saved with the car either way.",
-                    "そのまま使われ、これらは読みません。ただしどちらの場合も車と一緒に保存されます。"),
+                ("Damper setup", "ダンパー設定"),
+                ("They are only read while a damper model is selected. Native leaves the game's own damper in charge and does not read them, but they are still saved with the car either way.",
+                    "読み込まれるのはダンパーモデルを選んでいるときだけです。Native ではゲーム標準のダンパーがそのまま使われ、これらは読みません。ただしどちらの場合も車と一緒に保存されます。"),
                 ("Pull-down floor", "引き下げ下限"),
                 ("Stiffness and damping are derived from the wheel part's mass and the suspension part's wheel rate. There is nothing to set.",
                     "剛性と減衰はホイールパーツの質量とサスペンションパーツのホイールレートから導出されます。設定項目はありません。"),
@@ -203,28 +201,22 @@ namespace ScrewTweaks.Physics.Suspension
             DrawModelPicker(
                 Loc.Tf("Damper model: {0}", DamperModels.Current?.Name ?? "-"),
                 DamperModels.Current?.Description,
+                Loc.T("The game's pull-down clamp is not applied while a wheel has vertical freedom: the tyre's one-sided force is the bound."),
                 DamperModels.All, DamperModels.Current, ref _damperOpen,
                 m => DamperModels.Select(m), m => m.Name);
 
             GUILayout.Space(10f);
             DrawDamperSetups();
 
-            if (!DamperModels.IsNative)
+            if (!DamperModels.IsNative && TireVerticalModels.IsNative)
             {
                 GUILayout.Space(10f);
-                if (TireVerticalModels.IsNative)
-                {
-                    DrawSlider(Loc.T("Pull-down floor"), DamperTuning.ReboundFloorConfig, 0f, 1.5f, "0.00");
-                    GUILayout.Label(DamperTuning.ReboundFloor <= 0f
+                DrawSlider(Loc.T("Pull-down floor"), DamperTuning.ReboundFloorConfig, 0f, 1.5f, "0.00",
+                    (DamperTuning.ReboundFloor <= 0f
                         ? Loc.T("Pull-down floor 0 = the game's clamp: the damper never pulls the body down.")
                         : Loc.Tf("Pull-down floor {0}: the damper may pull the body down by up to that fraction of the wheel's static load.",
-                            DamperTuning.ReboundFloor));
-                    GUILayout.Label(Loc.T("Raise it only if rebound feels like it runs out near full extension."));
-                }
-                else
-                {
-                    GUILayout.Label(Loc.T("The game's pull-down clamp is not applied while a wheel has vertical freedom: the tyre's one-sided force is the bound."));
-                }
+                            DamperTuning.ReboundFloor))
+                    + "\n\n" + Loc.T("Raise it only if rebound feels like it runs out near full extension."));
             }
 
             GUILayout.Space(16f);
@@ -237,11 +229,15 @@ namespace ScrewTweaks.Physics.Suspension
         /// <summary>
         /// The four damper coefficients are part properties, stored in the car's own save file next to the
         /// game's Spring Force and Damper Force, so each car keeps its own setup and a shared car carries
-        /// it. They are shown here read-only: the builder is where they are edited.
+        /// it. They are shown here read-only: the builder is where they are edited. The explanation is on
+        /// hover, because it is the same on every car and only needed once.
         /// </summary>
         private void DrawDamperSetups()
         {
-            GUILayout.Label(Loc.T("Damper setup (stored on the suspension part, so it travels with the car):"));
+            PanelUi.Label(Loc.T("Damper setup"),
+                Loc.T("Damper setup (stored on the suspension part, so it travels with the car):")
+                + "\n\n" + Loc.T("The game's Damper Force is still the base; these four are its shape.")
+                + "\n\n" + Loc.T("They are only read while a damper model is selected. Native leaves the game's own damper in charge and does not read them, but they are still saved with the car either way."));
 
             var seen = new HashSet<string>();
             try
@@ -265,10 +261,6 @@ namespace ScrewTweaks.Physics.Suspension
             }
 
             if (seen.Count == 0) GUILayout.Label(Loc.T("  (no car yet)"));
-
-            GUILayout.Label(Loc.T("The game's Damper Force is still the base; these four are its shape."));
-            GUILayout.Label(Loc.T("They are only read while a damper model is selected. Native leaves the game's own damper in"));
-            GUILayout.Label(Loc.T("charge and does not read them, but they are still saved with the car either way."));
         }
 
         private void DrawVertical()
@@ -276,13 +268,11 @@ namespace ScrewTweaks.Physics.Suspension
             DrawModelPicker(
                 Loc.Tf("Tyre vertical model: {0}", TireVerticalModels.Current?.Name ?? "-"),
                 TireVerticalModels.Current?.Description,
+                Loc.T("Stiffness and damping are derived from the wheel part's mass and the suspension part's wheel rate. There is nothing to set."),
                 TireVerticalModels.All, TireVerticalModels.Current, ref _verticalOpen,
                 m => TireVerticalModels.Select(m), m => m.Name);
 
             if (TireVerticalModels.IsNative) return;
-
-            GUILayout.Space(6f);
-            GUILayout.Label(Loc.T("Stiffness and damping are derived from the wheel part's mass and the suspension part's wheel rate. There is nothing to set."));
         }
 
         private void DrawWheels()
@@ -332,12 +322,14 @@ namespace ScrewTweaks.Physics.Suspension
             if (shown == 0) GUILayout.Label(Loc.T("  (no grounded wheels)"));
         }
 
-        private static void DrawModelPicker<T>(string heading, string? description, System.Collections.Generic.IReadOnlyList<T> all,
+        private static void DrawModelPicker<T>(string heading, string? description, string? extra,
+            System.Collections.Generic.IReadOnlyList<T> all,
             T? current, ref bool open, Action<T> select, Func<T, string> name)
             where T : class
         {
-            GUILayout.Label(heading);
-            if (description != null) GUILayout.Label(Loc.T(description));
+            string? tooltip = description != null ? Loc.T(description) : null;
+            if (extra != null) tooltip = tooltip != null ? tooltip + "\n\n" + extra : extra;
+            PanelUi.Label(heading, tooltip);
 
             GUILayout.Space(6f);
             if (GUILayout.Button($"{name(current!)} ▼", GUILayout.Width(240f)))
@@ -362,11 +354,12 @@ namespace ScrewTweaks.Physics.Suspension
             return wc.gameObject.name;
         }
 
-        private static void DrawSlider(string label, ConfigEntry<float>? entry, float min, float max, string format)
+        private static void DrawSlider(string label, ConfigEntry<float>? entry, float min, float max, string format,
+            string? tooltip = null)
         {
             if (entry == null) return;
             GUILayout.BeginHorizontal();
-            GUILayout.Label($"{label}: {entry.Value.ToString(format)}", GUILayout.Width(190f));
+            PanelUi.Label($"{label}: {entry.Value.ToString(format)}", tooltip);
             float value = GUILayout.HorizontalSlider(entry.Value, min, max, GUILayout.Width(120f));
             GUILayout.EndHorizontal();
             if (!Mathf.Approximately(value, entry.Value))

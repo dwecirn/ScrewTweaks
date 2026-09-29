@@ -58,8 +58,8 @@ namespace ScrewTweaks.Steering
                     "把游戏随速度收紧的转向限制朝“无限制”方向混合。0 = 原版。"),
                 ("Both are the same settings as the two rows on the game's controls page; either place changes them,",
                     "这两项和游戏操控设置页里的那两行是同一份设置；两边都能改，"),
-                ("and both are saved with the game's own settings rather than in the mod's config.",
-                    "而且它们保存在游戏自己的设置里，不在 mod 的配置里。"));
+                ("and both are saved in the mod's config rather than in the game's settings.",
+                    "而且它们保存在 mod 的配置里，不在游戏设置里。"));
 
             Loc.Add(PanelLanguage.Japanese,
                 ("Steering", "ステアリング"),
@@ -71,8 +71,8 @@ namespace ScrewTweaks.Steering
                     "速度に応じて厳しくなるステアリング制限を「制限なし」側へ混ぜます。0 = バニラ。"),
                 ("Both are the same settings as the two rows on the game's controls page; either place changes them,",
                     "どちらもゲームの操作設定ページにある 2 行と同じ設定です。どこで変えても共通で、"),
-                ("and both are saved with the game's own settings rather than in the mod's config.",
-                    "mod の設定ファイルではなくゲーム自身の設定として保存されます。"));
+                ("and both are saved in the mod's config rather than in the game's settings.",
+                    "mod の設定ファイルに保存され、ゲームの設定ではありません。"));
         }
 
         private void Update()
@@ -85,29 +85,25 @@ namespace ScrewTweaks.Steering
         private void DrawSection()
         {
             bool instant = SteeringSettings.InstantSteering;
-            bool wanted = GUILayout.Toggle(instant, Loc.T(" Instant steering"));
+            bool wanted = PanelUi.Toggle(Loc.T(" Instant steering"), instant,
+                Loc.T("Binary (keyboard / d-pad) steering is applied in one frame instead of being ramped."));
             if (wanted != instant)
             {
                 SteeringSettings.SetInstant(wanted);
                 SteeringSpeedApplier.ApplyToAll();
             }
 
-            GUILayout.Label(Loc.T("Binary (keyboard / d-pad) steering is applied in one frame instead of being ramped."));
-
             GUILayout.Space(12f);
+            string shared = Loc.T("Both are the same settings as the two rows on the game's controls page; either place changes them,")
+                            + " " + Loc.T("and both are saved in the mod's config rather than in the game's settings.");
+
             GUILayout.BeginHorizontal();
-            GUILayout.Label(Loc.Tf("Steering limit relax: {0}", SteeringSettings.LimitRelax.ToString("0.00")),
-                GUILayout.Width(190f));
+            PanelUi.Label(Loc.Tf("Steering limit relax: {0}", SteeringSettings.LimitRelax.ToString("0.00")),
+                Loc.T("Blends the game's speed-sensitive steering limit toward none. 0 = vanilla.") + "\n\n" + shared);
             float relax = GUILayout.HorizontalSlider(SteeringSettings.LimitRelax, 0f, 1f, GUILayout.Width(120f));
             GUILayout.EndHorizontal();
             if (!Mathf.Approximately(relax, SteeringSettings.LimitRelax))
                 SteeringSettings.SetLimitRelax(relax);
-
-            GUILayout.Label(Loc.T("Blends the game's speed-sensitive steering limit toward none. 0 = vanilla."));
-
-            GUILayout.Space(14f);
-            GUILayout.Label(Loc.T("Both are the same settings as the two rows on the game's controls page; either place changes them,"));
-            GUILayout.Label(Loc.T("and both are saved with the game's own settings rather than in the mod's config."));
         }
     }
 }

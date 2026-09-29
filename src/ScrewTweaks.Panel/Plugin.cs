@@ -166,6 +166,8 @@ namespace ScrewTweaks.Panel
             if (sections.Count == 0) _settingsActive = true;
             if (_active < 0 || _active >= sections.Count) _active = 0;
 
+            PanelUi.BeginWindow();
+
             // The grip sits in the corner that is free to follow the mouse, so which one it is depends
             // on whether the window is currently up against the right edge of the screen.
             if (!_resizing) _gripOnRight = _window.xMax < Screen.width - Margin - 2f;
@@ -183,6 +185,7 @@ namespace ScrewTweaks.Panel
             }
             GUILayout.EndHorizontal();
 
+            DrawTooltip();
             DrawResizeGrip();
 
             // Runs last, and the grip consumes its own mouse events first, so dragging the corner
@@ -267,6 +270,35 @@ namespace ScrewTweaks.Panel
             GUILayout.Label($"{PluginInfo.Name}  {PluginInfo.Version}");
             GUILayout.Label(Loc.Tf("Settings are saved to {0}.", $"{PluginInfo.GUID}.cfg"));
             GUILayout.Label(Loc.T("Drag the title bar to move the window, the dotted grip in a corner to resize it."));
+        }
+
+        /// <summary>
+        /// Draws whatever the section under the mouse asked to explain. Kept inside the window so it is
+        /// clipped with it, and flipped above the cursor when there is no room below.
+        /// </summary>
+        private void DrawTooltip()
+        {
+            if (Event.current.type != EventType.Repaint) return;
+
+            string text = PanelUi.PendingTooltip;
+            if (string.IsNullOrEmpty(text)) return;
+
+            var style = new GUIStyle(GUI.skin.box)
+            {
+                wordWrap = true,
+                alignment = TextAnchor.UpperLeft,
+                padding = new RectOffset(8, 8, 6, 6)
+            };
+
+            float width = Mathf.Min(360f, Mathf.Max(120f, _window.width - 20f));
+            float height = style.CalcHeight(new GUIContent(text), width);
+
+            Vector2 mouse = Event.current.mousePosition;
+            float x = Mathf.Clamp(mouse.x + 18f, 4f, Mathf.Max(4f, _window.width - width - 4f));
+            float y = mouse.y + 22f;
+            if (y + height > _window.height - 4f) y = Mathf.Max(4f, mouse.y - height - 8f);
+
+            GUI.Box(new Rect(x, y, width, height), text, style);
         }
 
         /// <summary>
