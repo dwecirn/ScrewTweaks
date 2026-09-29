@@ -20,23 +20,24 @@ namespace ScrewTweaks.Panel
     {
         private const int WindowId = 0x5EC1;
 
-        // The sidebar sizes itself to the widest tab caption; only these bounds are fixed.
+        // The tab column sizes itself to the widest caption; only these bounds are fixed.
         private const float MinSidebarWidth = 96f;
         private const float MaxSidebarWidth = 190f;
 
-        // Room the content column needs before the sidebar is allowed to keep growing.
+        // Room the content column needs before the tab column is allowed to keep growing.
         private const float MinContentWidth = 220f;
         private const float PreferredContentWidth = 410f;
 
-        // Window chrome: Unity's window style padding plus the outer margin.
+        // Unity's window style padding plus the outer margin.
         private const float WindowPadding = 44f;
         private const float Margin = 24f;
+
+        private const float MinWindowWidth = MinSidebarWidth + MinContentWidth + WindowPadding;
 
         private const float ScrollbarWidth = 8f;
         private const float GripSize = 16f;
 
-        // Starting size. Height is a fraction of the screen; the window is resizable from its
-        // lower-right corner afterwards.
+        // Starting size. Height is a fraction of the screen; the window is resizable afterwards.
         private const float HeightFraction = 0.30f;
         private const float MinHeight = 180f;
         private const float MaxInitialHeight = 400f;
@@ -51,10 +52,11 @@ namespace ScrewTweaks.Panel
         private bool _placed;
         private int _lastScreenWidth = -1;
         private int _lastScreenHeight = -1;
-        private PanelSide _placedSide = PanelSide.Right;
 
         private float _sidebarWidth = MinSidebarWidth;
+
         private bool _resizing;
+        private bool _gripOnRight = true;
 
         private Vector2 _tabScroll;
         private Vector2 _contentScroll;
@@ -65,11 +67,11 @@ namespace ScrewTweaks.Panel
 
         private void Awake()
         {
-            PanelSettings.SideConfig = Config.Bind(
+            PanelSettings.TabSideConfig = Config.Bind(
                 "Panel",
-                "Side",
-                PanelSide.Right,
-                "Which screen edge the panel is anchored to, vertically centred. " +
+                "TabSide",
+                TabSide.Left,
+                "Which side of the window the tab column sits on. Left or Right. " +
                 "Also switchable from the panel's Settings tab.");
 
             PanelSettings.LanguageConfig = Config.Bind(
@@ -123,7 +125,7 @@ namespace ScrewTweaks.Panel
 
             float wanted = Mathf.Clamp(widest + ScrollbarWidth + 22f, MinSidebarWidth, MaxSidebarWidth);
 
-            // Never let the sidebar squeeze the content column below what it needs, however narrow the
+            // Never let the tab column squeeze the content below what it needs, however narrow the
             // window has been dragged.
             float available = _window.width - MinContentWidth - WindowPadding;
             _sidebarWidth = Mathf.Max(MinSidebarWidth, Mathf.Min(wanted, available));
@@ -136,15 +138,13 @@ namespace ScrewTweaks.Panel
         }
 
         /// <summary>
-        /// Anchored to the chosen edge and centred vertically. Re-done on the first frame, on a
-        /// resolution change and when the side setting changes; a size or position the player dragged
-        /// out is left alone otherwise.
+        /// Opened against the right edge of the screen, vertically centred. Only re-done on the first
+        /// frame and on a resolution change, so a size and position the player dragged out survive.
         /// </summary>
         private void Place()
         {
             bool resized = Screen.width != _lastScreenWidth || Screen.height != _lastScreenHeight;
-            bool movedSide = PanelSettings.Side != _placedSide;
-            if (_placed && !resized && !movedSide) return;
+            if (_placed && !resized) return;
 
             if (!_placed || resized)
             {
@@ -155,11 +155,8 @@ namespace ScrewTweaks.Panel
             }
 
             _placed = true;
-            _placedSide = PanelSettings.Side;
 
-            _window.x = PanelSettings.OnRight
-                ? Mathf.Max(Margin, Screen.width - _window.width - Margin)
-                : Margin;
+            _window.x = Mathf.Max(Margin, Screen.width - _window.width - Margin);
             _window.y = Mathf.Max(Margin, (Screen.height - _window.height) * 0.5f);
         }
 
@@ -169,9 +166,21 @@ namespace ScrewTweaks.Panel
             if (sections.Count == 0) _settingsActive = true;
             if (_active < 0 || _active >= sections.Count) _active = 0;
 
+            // The grip sits in the corner that is free to follow the mouse, so which one it is depends
+            // on whether the window is currently up against the right edge of the screen.
+            if (!_resizing) _gripOnRight = _window.xMax < Screen.width - Margin - 2f;
+
             GUILayout.BeginHorizontal();
-            DrawSidebar(sections);
-            DrawContent(sections);
+            if (PanelSettings.TabsOnRight)
+            {
+                DrawContent(sections);
+                DrawSidebar(sections);
+            }
+            else
+            {
+                DrawSidebar(sections);
+                DrawContent(sections);
+            }
             GUILayout.EndHorizontal();
 
             DrawResizeGrip();
@@ -235,10 +244,10 @@ namespace ScrewTweaks.Panel
             GUILayout.Label(Loc.T("Panel settings"));
             GUILayout.Space(10f);
 
-            GUILayout.Label(Loc.T("Panel side"));
+            GUILayout.Label(Loc.T("Tab side"));
             GUILayout.BeginHorizontal();
-            if (Choice(Loc.T("Right"), PanelSettings.OnRight)) PanelSettings.SetSide(PanelSide.Right);
-            if (Choice(Loc.T("Left"), !PanelSettings.OnRight)) PanelSettings.SetSide(PanelSide.Left);
+            if (Choice(Loc.T("Left"), !PanelSettings.TabsOnRight)) PanelSettings.SetTabSide(TabSide.Left);
+            if (Choice(Loc.T("Right"), PanelSettings.TabsOnRight)) PanelSettings.SetTabSide(TabSide.Right);
             GUILayout.EndHorizontal();
 
             GUILayout.Space(10f);
@@ -257,31 +266,43 @@ namespace ScrewTweaks.Panel
             GUILayout.Space(16f);
             GUILayout.Label($"{PluginInfo.Name}  {PluginInfo.Version}");
             GUILayout.Label(Loc.Tf("Settings are saved to {0}.", $"{PluginInfo.GUID}.cfg"));
-            GUILayout.Label(Loc.T("Drag the title bar to move the window, the lower-right corner to resize it."));
+            GUILayout.Label(Loc.T("Drag the title bar to move the window, the dotted grip in a corner to resize it."));
         }
 
         /// <summary>
-        /// A small dot grip in the corner. Unity's IMGUI windows are not resizable on their own, so
-        /// this is the whole mechanism: the drag is turned into a size change and the mouse events are
-        /// consumed before <c>GUI.DragWindow</c> gets a chance to move the window instead.
+        /// A small dot grip, drawn in the free corner of the window. Unity's IMGUI windows are not
+        /// resizable on their own, so this is the whole mechanism: the drag becomes a size change, and
+        /// the mouse events are consumed before <c>GUI.DragWindow</c> can move the window instead.
+        ///
+        /// Which corner is free depends on where the window is. Pinned against the right edge of the
+        /// screen, growing to the right is impossible, so the window has to grow leftwards - and then
+        /// the grip belongs in the bottom-left corner, because that is the corner that will follow the
+        /// mouse. Anywhere else the grip is in the bottom-right, as usual.
         /// </summary>
         private void DrawResizeGrip()
         {
-            var grip = new Rect(_window.width - GripSize, _window.height - GripSize, GripSize, GripSize);
+            var grip = new Rect(
+                _gripOnRight ? _window.width - GripSize : 0f,
+                _window.height - GripSize,
+                GripSize, GripSize);
 
             if (Event.current.type == EventType.Repaint)
             {
                 Color previous = GUI.color;
                 GUI.color = new Color(1f, 1f, 1f, 0.35f);
+
+                float column = _gripOnRight ? grip.xMax - 5f : grip.xMin + 2f;
+                float step = _gripOnRight ? -4f : 4f;
                 for (int row = 0; row < 3; row++)
                 {
                     for (int col = 0; col <= row; col++)
                     {
                         GUI.DrawTexture(
-                            new Rect(grip.xMax - 5f - row * 4f, grip.yMax - 5f - col * 4f, 3f, 3f),
+                            new Rect(column + row * step, grip.yMax - 5f - col * 4f, 3f, 3f),
                             Texture2D.whiteTexture);
                     }
                 }
+
                 GUI.color = previous;
             }
 
@@ -314,16 +335,21 @@ namespace ScrewTweaks.Panel
 
         private void ResizeBy(float dx, float dy)
         {
-            float maxWidth = Mathf.Max(MinContentWidth, Screen.width - 2f * Margin);
-            float minWidth = Mathf.Min(maxWidth,
-                Mathf.Max(MinSidebarWidth + MinContentWidth + WindowPadding, _sidebarWidth + MinContentWidth + WindowPadding));
-            float width = Mathf.Clamp(_window.width + dx, minWidth, maxWidth);
+            float screenLimit = Mathf.Max(MinWindowWidth, Screen.width - 2f * Margin);
+
+            // The edge being dragged moves; the opposite one stays. On the right the window is also
+            // capped by the room left to the screen edge, so it cannot be dragged off screen.
+            float maxWidth = _gripOnRight
+                ? Mathf.Max(MinWindowWidth, Mathf.Min(screenLimit, Screen.width - Margin - _window.x))
+                : screenLimit;
+
+            float desired = _gripOnRight ? _window.width + dx : _window.width - dx;
+            float width = Mathf.Clamp(desired, MinWindowWidth, maxWidth);
 
             float maxHeight = Mathf.Max(MinHeight, Screen.height - 2f * Margin);
             float height = Mathf.Clamp(_window.height + dy, MinHeight, maxHeight);
 
-            // Growing on the right edge pushes the window left, so the anchored edge stays put.
-            if (PanelSettings.OnRight) _window.x += _window.width - width;
+            if (!_gripOnRight) _window.x += _window.width - width;
 
             _window.width = width;
             _window.height = height;

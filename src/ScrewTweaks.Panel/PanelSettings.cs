@@ -4,28 +4,28 @@ using BepInEx.Configuration;
 
 namespace ScrewTweaks.Panel
 {
-    public enum PanelSide
+    /// <summary>Which side of the window the tab column is drawn on.</summary>
+    public enum TabSide
     {
-        Right,
-        Left
+        Left,
+        Right
     }
 
     /// <summary>Panel settings, persisted in dev.dwecirn.screwtweaks.panel.cfg.</summary>
     internal static class PanelSettings
     {
-        internal static ConfigEntry<PanelSide>? SideConfig;
+        internal static ConfigEntry<TabSide>? TabSideConfig;
         internal static ConfigEntry<PanelLanguage>? LanguageConfig;
 
-        internal static PanelSide Side => SideConfig?.Value ?? PanelSide.Right;
+        internal static TabSide TabSide => TabSideConfig?.Value ?? TabSide.Left;
 
-        /// <summary>Which screen edge the panel is anchored to, and centred on vertically.</summary>
-        internal static bool OnRight => Side == PanelSide.Right;
+        internal static bool TabsOnRight => TabSide == TabSide.Right;
 
         internal static PanelLanguage Language => LanguageConfig?.Value ?? PanelLanguage.English;
 
-        internal static void SetSide(PanelSide side)
+        internal static void SetTabSide(TabSide side)
         {
-            if (SideConfig != null) SideConfig.Value = side;
+            if (TabSideConfig != null) TabSideConfig.Value = side;
         }
 
         internal static void SetLanguage(PanelLanguage language)

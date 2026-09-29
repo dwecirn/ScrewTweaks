@@ -103,7 +103,7 @@ dotnet build ScrewTweaks.sln --no-restore -m:1 -t:ListVersions
 
 ## 游戏内面板
 
-按 **F7** 打开窗口，标签页在**左侧竖排**。它默认贴在**屏幕右侧、垂直居中**；拖标题栏移动，拖右下角的点状手柄改变大小。标签栏宽度按最长的标题自适应，剩下的宽度全部给内容区。每个功能插件注册一个带标题的板块：
+按 **F7** 打开一个浮动窗口，默认贴在**屏幕右侧、垂直居中**；拖标题栏移动。标签栏宽度按最长的标题自适应，剩下的宽度全部给内容区。每个功能插件注册一个带标题的板块：
 
 - **ECU** —— ABS 与牵引力通道
 - **Tires** —— 轮胎模型选择、调参、每轮实时遥测
@@ -119,8 +119,10 @@ dotnet build ScrewTweaks.sln --no-restore -m:1 -t:ListVersions
 
 | 设置 | 默认 | 含义 |
 |---|---|---|
-| `Panel/Side` | `Right` | 面板贴哪一边。`Left` 或 `Right` |
+| `Panel/TabSide` | `Left` | 标签栏在窗口内的哪一侧。`Left` 或 `Right` |
 | `Panel/Language` | `English` | 面板语言。`English`、`ChineseSimplified` 或 `Japanese` |
+
+缩放手柄（点状）画在**能跟着鼠标走的那一个角**：通常右下角；但当窗口贴在屏幕右缘时改画在左下角，因为那时向右生长是不可能的。
 
 语言作用于**所有板块**，不只是面板本身——某个插件的板块如果没提供译文，它就保持英文，所以切换语言不会变成半中半英的样子。算法名和模型名**不翻译**：它们就是配置文件里存的那串字符，也是传给 `EcuAids.Register` / `TireModels.Register` / `DamperModels.Register` 的字符串。
 

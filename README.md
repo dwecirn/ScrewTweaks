@@ -120,10 +120,9 @@ Other keys: **F8** dumps static tire/wheel data to `BepInEx/ScrewTweaks.tire-dum
 
 ## The in-game panel
 
-Press **F7** for a window with the tabs down its left side. It opens against the **right edge of the
-screen, vertically centred**. Drag the title bar to move it, the dotted grip in the lower-right corner to
-resize it; the tab column sizes itself to the longest caption and the content column takes the rest.
-Each feature plugin registers a titled section:
+Press **F7** for a floating window that opens against the **right edge of the screen, vertically
+centred**. Drag the title bar to move it. The tab column sizes itself to the longest caption and the
+content column takes the rest of the width. Each feature plugin registers a titled section:
 
 - **ECU** — ABS and traction channels
 - **Tires** — tire model selection, tuning, live per-wheel telemetry
@@ -140,8 +139,12 @@ The **Settings** tab is the panel's own, and both of its settings are saved to
 
 | Setting | Default | Meaning |
 |---|---|---|
-| `Panel/Side` | `Right` | Which screen edge the panel is anchored to. `Left` or `Right` |
+| `Panel/TabSide` | `Left` | Which side of the window the tab column sits on. `Left` or `Right` |
 | `Panel/Language` | `English` | Panel language. `English`, `ChineseSimplified` or `Japanese` |
+
+The dotted grip that resizes the window sits in whichever corner is free to follow the mouse: normally
+the lower-right, but the lower-left while the window is up against the right edge of the screen, because
+growing to the right is not possible there.
 
 The language applies to every section, not just the panel chrome — a section whose plugin has not
 provided translations simply stays English, so the switch is never a half-translated mess. Algorithm and
