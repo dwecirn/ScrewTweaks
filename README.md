@@ -121,8 +121,9 @@ Other keys: **F8** dumps static tire/wheel data to `BepInEx/ScrewTweaks.tire-dum
 ## The in-game panel
 
 Press **F7** for a window with the tabs down its left side. It opens against the **right edge of the
-screen, vertically centred**, and can be dragged anywhere from its title bar. Each feature plugin
-registers a titled section:
+screen, vertically centred**. Drag the title bar to move it, the dotted grip in the lower-right corner to
+resize it; the tab column sizes itself to the longest caption and the content column takes the rest.
+Each feature plugin registers a titled section:
 
 - **ECU** — ABS and traction channels
 - **Tires** — tire model selection, tuning, live per-wheel telemetry
