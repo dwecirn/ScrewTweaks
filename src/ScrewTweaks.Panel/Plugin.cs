@@ -18,14 +18,19 @@ namespace ScrewTweaks.Panel
     public class Plugin : BaseUnityPlugin
     {
         private const float WindowWidth = 440f;
-        private const float WindowHeight = 420f;
         private const float Margin = 24f;
+
+        // Height as a fraction of the screen, clamped. Unity IMGUI windows can also be resized by
+        // dragging the lower-right corner; this only sets the starting size.
+        private const float HeightFraction = 0.30f;
+        private const float MinHeight = 180f;
+        private const float MaxHeight = 340f;
 
         private bool _shown;
         private int _active;
         private int _lastScreenWidth = -1;
         private Vector2 _scroll;
-        private Rect _window = new Rect(0f, Margin, WindowWidth, WindowHeight);
+        private Rect _window = new Rect(0f, Margin, WindowWidth, 320f);
 
         private void Update()
         {
@@ -50,7 +55,7 @@ namespace ScrewTweaks.Panel
             {
                 _lastScreenWidth = Screen.width;
                 _window.width = WindowWidth;
-                _window.height = Mathf.Min(WindowHeight, Mathf.Max(200f, Screen.height - 2f * Margin));
+                _window.height = Mathf.Clamp(Screen.height * HeightFraction, MinHeight, MaxHeight);
                 _window.x = Mathf.Max(Margin, Screen.width - _window.width - Margin);
             }
 

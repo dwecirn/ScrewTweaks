@@ -83,7 +83,11 @@ namespace ScrewTweaks.PowerFactor
     [Serializable]
     internal class PowerFactorFunction : TorqueFunction
     {
-        private TorqueFunction _inner;
+        // Set by the two-argument constructor, or populated by Unity's deserializer when a car cache
+        // is loaded. The parameterless constructor exists only so that deserialization can run, which
+        // is why the field is left unset there.
+        private TorqueFunction _inner = null!;
+
         private PartType _partType;
 
         // Parameterless constructor for Unity serialization
