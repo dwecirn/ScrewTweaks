@@ -27,7 +27,7 @@ namespace ScrewTweaks.Physics.Tires
         private static readonly Dictionary<WheelController, TireIdentity> Table =
             new Dictionary<WheelController, TireIdentity>();
 
-        private static readonly List<WheelController?> Stale = new List<WheelController?>();
+        private static readonly List<WheelController> Stale = new List<WheelController>();
 
         internal static void Set(WheelController wheel, in TireIdentity identity) => Table[wheel] = identity;
 
@@ -42,7 +42,7 @@ namespace ScrewTweaks.Physics.Tires
             Stale.Clear();
             foreach (var entry in Table)
             {
-                if (entry.Key == null) Stale.Add(entry.Key);
+                if (entry.Key == null) Stale.Add(entry.Key!);
             }
             foreach (var wheel in Stale)
             {
