@@ -102,7 +102,8 @@ namespace ScrewTweaks.Physics.Tires
             float fyPure = sideMax * Mf(b, c, e, alphaEff);
 
             // --- camber thrust (native has none) is part of the lateral force ---
-            fyPure += parameters.CamberThrust * wheel.camberAngle * fz;
+            float camberThrust = parameters.CamberThrust * wheel.camberAngle * fz;
+            fyPure += camberThrust;
 
             // --- combined slip: ADAMS friction ellipse ---
             CombineAdmsEllipse(fxPure, fyPure, fwdMax, sideMax, kappa, alpha, out float fxCombined, out float fyCombined);
@@ -139,6 +140,8 @@ namespace ScrewTweaks.Physics.Tires
                 Radius = radius,
                 Sigma = parameters.SigmaA,
                 PeakSlipScale = parameters.PeakSlipScale,
+                CamberDeg = wheel.camberAngle,
+                CamberThrustForce = camberThrust,
                 HasIdentity = hasIdentity,
                 TireType = hasIdentity ? identity.Type : PartType.NONE,
                 TireGrip = hasIdentity ? identity.Grip : 0f,

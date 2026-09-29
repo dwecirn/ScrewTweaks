@@ -118,8 +118,9 @@ namespace ScrewTweaks.Physics.Tires
 
                 string id = s.HasIdentity ? $"{s.TireType} g={s.TireGrip,5:F2}" : "(no id)";
                 GUILayout.Label(
-                    $"{id}  k={s.Kappa,6:F3} a={s.AlphaDeg,6:F1} " +
-                    $"y={SafeRatio(s.Fy, s.FyMax),4:F2} Fz={s.Fz,6:F0} R={s.Radius,5:F2} sig={s.Sigma,4:F2} peak={s.PeakSlipScale,4:F2}");
+                    $"{id}  k={s.Kappa,6:F3} a={s.AlphaDeg,6:F1} y={SafeRatio(s.Fy, s.FyMax),4:F2} " +
+                    $"Fz={s.Fz,6:F0} R={s.Radius,5:F2} sig={s.Sigma,4:F2} peak={s.PeakSlipScale,4:F2} " +
+                    $"camber={s.CamberDeg,5:F1} camFx={s.CamberThrustForce,6:F0}");
             }
 
             GUILayout.Space(10f);
