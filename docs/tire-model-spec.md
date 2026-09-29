@@ -463,3 +463,34 @@ the native number, so under real tire physics the rear wheels spin almost contin
 **Resolution:** do not touch tyre data. Add a traction-control algorithm at the drive-torque layer
 (`ScrewTweaks.ECU` -> `ProgressiveTraction`), holding the slip ratio near the longitudinal peak so
 the rear keeps its lateral grip.
+
+---
+
+## 18. Fidelity policy (decided 2026-09)
+
+The model must **not** change the game's own tire data or balance. It only adds physics the game
+does not have.
+
+**Kept exactly as the game provides it:**
+
+| Input | Source |
+|---|---|
+| peak grip magnitude | `Grip` -> `maximumTireGripForce`, `loadGripCurve`, `forceCoefficient` |
+| slip curve shape | the tire's own `FrictionPresetAsphalt` / `FrictionPresetSand`, picked per surface |
+| slip units | `slipCoefficient` (the game's own normalisation) |
+| camber input | `wheel.camberAngle` (already suspension-driven) |
+| torque input | `wheel.motorTorque` / `wheel.brakeTorque` |
+| tire identity | `WheelController.PartConfigurationWheel` |
+
+**Added (new physics, not data):** camber thrust, relaxation length, own wheel-spin integration,
+ADAMS friction ellipse.
+
+**Deliberately NOT added:** rebalancing for the fact that the game's own numbers make off-road
+tires near-strictly better than street tires (only ~6-10% worse on asphalt, much stronger on sand).
+The user chose to stay faithful to the game rather than introduce authored penalties.
+
+**Known deviation worth remembering:** the native model clamps the *total* force vector to
+`loadCoefficient`, so its effective longitudinal peak is ~`loadCoefficient` while ours is
+`|D| * loadCoefficient * forceCoefficient` (~25% higher with forceCoefficient 1.35). This follows
+from replacing the native circle clamp with a real friction ellipse; a clamp can be re-added if
+strict parity is ever wanted.
