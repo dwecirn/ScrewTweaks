@@ -18,6 +18,7 @@ namespace ScrewTweaks.Physics.Tires
         public const string Version = PluginVersion.Value;
     }
 
+    [BepInDependency(ScrewTweaks.UI.PluginInfo.GUID)]
     [BepInPlugin(PluginInfo.GUID, PluginInfo.Name, PluginInfo.Version)]
     public class Plugin : BaseUnityPlugin
     {

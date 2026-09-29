@@ -74,7 +74,26 @@ plugin's `.cfg`.
 
 Each plugin has its own version, set in exactly one place: `<Version>` in that plugin's `.csproj`.
 The `[BepInPlugin]` version string and the DLL metadata are generated from it, so there is nothing
-else to keep in sync. To see every plugin's version at once:
+else to keep in sync.
+
+A release is a *bundle*, not a single version number:
+
+- a plugin's version only moves when that plugin changes. A plugin that did not change keeps its
+  version, and that is the correct behaviour;
+- the git tag is a date (`2026.09.29`) and identifies the bundle, so it cannot be mistaken for any
+  component's version;
+- [`BepInDependency`](https://docs.bepinex.dev) is where versions actually matter: a plugin can
+  require a minimum version of another, and BepInEx will refuse to load it with a clear error rather
+  than fail at run time.
+
+`tools/release.ps1` does the tedious part — working out which plugins changed since the last tag:
+
+```powershell
+pwsh tools/release.ps1              # what changed, and the current version of each plugin
+pwsh tools/release.ps1 -Package     # the same, then build and zip the bundle
+```
+
+To see every version without git history:
 
 ```powershell
 dotnet build ScrewTweaks.sln --no-restore -m:1 -t:ListVersions

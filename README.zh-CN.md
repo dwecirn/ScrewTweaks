@@ -61,7 +61,22 @@ dotnet build ScrewTweaks.sln --no-restore -m:1
 
 ### 版本号
 
-每个插件有**自己独立的版本**，并且只在一个地方定义：该插件 `.csproj` 里的 `<Version>`。`[BepInPlugin]` 的版本字符串和 DLL 元数据都由它生成，所以没有第二处需要同步。想一次看到所有插件的版本：
+每个插件有**自己独立的版本**，并且只在一个地方定义：该插件 `.csproj` 里的 `<Version>`。`[BepInPlugin]` 的版本字符串和 DLL 元数据都由它生成，所以没有第二处需要同步。
+
+**一次发布是一个"包"，而不是一个统一版本号：**
+
+- 插件的版本号**只在它自己变了时才动**。没变的插件保持原版本，这才是正确的行为；
+- **git 标签用日期**（`2026.09.29`），它标识的是"这次打包"，不会被误当成某个组件的版本；
+- **版本号真正起作用的地方是 `BepInDependency`**：插件可以要求另一个插件的最低版本，不满足时 BepInEx 会**明确报错并拒绝加载**，而不是运行到一半崩掉。
+
+`tools/release.ps1` 负责最烦的那一步——算出**自上次标签以来哪些插件变了**：
+
+```powershell
+pwsh tools/release.ps1              # 哪些变了 + 各插件当前版本
+pwsh tools/release.ps1 -Package     # 同上，并构建打包成 zip
+```
+
+不想看 git 历史，只想要全部版本号：
 
 ```powershell
 dotnet build ScrewTweaks.sln --no-restore -m:1 -t:ListVersions
