@@ -39,9 +39,7 @@ The models are replaceable slots: `ITireModel`, `IDamperModel`, `ITireVerticalMo
 
 The reasoning and the measured game data behind the two physics modules are in
 [`docs/tire-model-spec.md`](docs/tire-model-spec.md) and
-[`docs/suspension-model-spec.md`](docs/suspension-model-spec.md). Whatever the game already exposes to the
-player is left alone on purpose: an external brake bias was dropped from this suite once the brake part
-turned out to have a `brakeforce` property of its own.
+[`docs/suspension-model-spec.md`](docs/suspension-model-spec.md).
 
 
 ---
@@ -64,6 +62,7 @@ Every plugin is independent — install, enable and tune them separately. The pa
 Keys: **F7** opens the panel, **F8** dumps static tire and wheel data to
 `BepInEx/ScrewTweaks.tire-dump.txt`, **F9** records 30 s of per-wheel tyre telemetry to
 `BepInEx/ScrewTweaks.tire-telemetry.csv`.
+
 ## Install
 
 1. Install **[BepInEx 5 (x64)](https://github.com/BepInEx/BepInEx/releases)** into your Screw Drivers folder if you have not already
@@ -71,8 +70,8 @@ Keys: **F7** opens the panel, **F8** dumps static tire and wheel data to
 2. Drop every `ScrewTweaks.*.dll` into `BepInEx/plugins/`.
 3. Launch the game. A log line per plugin should appear in `BepInEx/LogOutput.log`.
 
-> `ScrewTweaks.Panel.dll` **must** be present. It is the panel host; the feature plugins register their
-> sections into it. Everything else is optional and independent.
+> `ScrewTweaks.Panel.dll` **must** be installed. Every plugin depends on it for configuration.
+> The rest are optional and independent unless noted otherwise.
 
 ---
 
@@ -116,8 +115,6 @@ content column takes the rest of the width. Each feature plugin registers a titl
 - **Steering** — Instant Steering and the steering limit relax
 - **Settings** — the panel's own settings, first in the list: side, language, and the loaded modules with their versions
 
-The panel unlocks the cursor while open. Sections are listed in plugin load order.
-
 ### Panel Settings
 
 The **Settings** tab is the panel's own, and both of its settings are saved to
@@ -131,13 +128,6 @@ The **Settings** tab is the panel's own, and both of its settings are saved to
 The dotted grip that resizes the window sits in whichever corner is free to follow the mouse: normally
 the lower-right, but the lower-left while the window is up against the right edge of the screen, because
 growing to the right is not possible there.
-
-The language applies to every section, not just the panel chrome — a section whose plugin has not
-provided translations simply stays English, so the switch is never a half-translated mess. Algorithm and
-model *names* are not translated: they are the same strings the config file stores and that
-`EcuAids.Register` / `TireModels.Register` / `DamperModels.Register` are called with.
-
-The READMEs and the comments inside the `.cfg` files stay in English regardless.
 
 ---
 
@@ -356,10 +346,8 @@ the game ignores.
 
 ## Auto Shift
 
-`General/Enabled` in `dev.dwecirn.screwtweaks.autoshift.cfg`, and the same entry
-  as the **F7 → Auto Shift** checkbox. Shifts are taken 0.2 s after the RPM threshold is crossed
-  instead of 1 s, with a shorter cooldown and a shorter torque cut. Unticking the box writes the
-  game's own values back.
+`General/Enabled` in `dev.dwecirn.screwtweaks.autoshift.cfg`, and the same entry as the **F7 → Auto Shift** checkbox. Shifts are taken 0.2 s after the RPM threshold is crossed instead of 1 s, with a shorter cooldown and a shorter torque cut. Unticking the box writes the game's own values back.
+
 ## Other plugins
 
 - **Engine Sound** — restores sound for the engine type the stock selector drops on hybrids, and
@@ -374,6 +362,3 @@ the game ignores.
   (`src/chrono_vehicle/wheeled_vehicle/tire/ChPac02Tire.cpp`), BSD-3-Clause. No Chrono code is
   built or shipped; only the formula was ported.
 - The tire slot, panel registry and aid slots are original to this project.
-
-Licensed under **BSD-3-Clause**; see [`LICENSE`](LICENSE).
-

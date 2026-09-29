@@ -25,7 +25,7 @@
 モデルは差し替え可能なスロットです。`ITireModel`、`IDamperModel`、`ITireVerticalModel`、`IBrakeAid`/`IDriveAid`、そしてパネルホストはいずれも公開 API で、それぞれの実例は [docs/extending.ja.md](docs/extending.ja.md) にあります。
 
 2 つの物理モジュールの根拠と実測したゲームデータは、[`docs/tire-model-spec.md`](docs/tire-model-spec.md) と
-[`docs/suspension-model-spec.md`](docs/suspension-model-spec.md) にあります。ゲームがすでにプレイヤーへ公開しているものには、意図的に手を入れていません。外部のブレーキ前後配分は、ブレーキパーツ自身が `brakeforce` プロパティを持っていたと分かった時点で取り下げました。
+[`docs/suspension-model-spec.md`](docs/suspension-model-spec.md) にあります。
 
 
 ---
@@ -45,13 +45,15 @@
 | `ScrewTweaks.PowerFactor` | エンジン種別ごとのパワーファクター。車と一緒に保存 | [その他のプラグイン](#その他のプラグイン) |
 
 キー：**F7** でパネルを開閉、**F8** で静的なタイヤ／ホイールデータを `BepInEx/ScrewTweaks.tire-dump.txt` に出力、**F9** でホイールごとのタイヤテレメトリを 30 秒 `BepInEx/ScrewTweaks.tire-telemetry.csv` に記録します。
+
 ## インストール
 
 1. まだなら **[BepInEx 5 (x64)](https://github.com/BepInEx/BepInEx/releases)** を Screw Drivers フォルダに導入します（`Screw Drivers.exe` の隣に `BepInEx/` と `winhttp.dll` が必要）。
 2. すべての `ScrewTweaks.*.dll` を `BepInEx/plugins/` に入れます。
 3. ゲームを起動します。`BepInEx/LogOutput.log` にプラグインごとに 1 行ログが出ます。
 
-> `ScrewTweaks.Panel.dll` は**必須**です。これはパネルのホストで、各機能プラグインは自分のセクションをここに登録します。それ以外のプラグインはすべて任意で、互いに独立しています。
+> `ScrewTweaks.Panel.dll` は**必須**です。すべてのプラグインが設定のためにこれに依存します。
+> それ以外のプラグインは、特に断りのない限り任意で、互いに独立しています。
 
 ---
 
@@ -89,8 +91,6 @@ Settings タブにも一覧で出ます。スイート全体は日付でしか�
 - **Steering** — インスタントステアリングとステアリング制限の緩和
 - **Settings** — パネル自身の設定。先頭にあり、位置・言語・読み込み済みモジュールとそのバージョンを表示します
 
-パネルを開くとカーソルが解放されます。セクションはプラグインの読み込み順に並びます。
-
 ### パネルの設定
 
 **Settings** はパネル自身のタブで、どちらの設定も `dev.dwecirn.screwtweaks.panel.cfg` に保存されます：
@@ -101,10 +101,6 @@ Settings タブにも一覧で出ます。スイート全体は日付でしか�
 | `Panel/Language` | `English` | パネルの言語。`English`、`ChineseSimplified`、`Japanese` |
 
 サイズ変更用のドット状グリップは、**マウスに追従できる側の角**に描かれます。通常は右下ですが、ウィンドウが画面右端に接している間は左下になります——その位置では右へ広げられないためです。
-
-言語はパネル自身だけでなく**すべてのセクション**に効きます。訳を用意していないプラグインのセクションは英語のままになるので、切り替えても中途半端な混在にはなりません。アルゴリズム名とモデル名は**翻訳しません**。設定ファイルに保存される文字列そのものであり、`EcuAids.Register` / `TireModels.Register` / `DamperModels.Register` に渡す名前でもあるからです。
-
-README と `.cfg` 内のコメントは言語に関係なく英語のままです。
 
 ---
 
@@ -260,6 +256,7 @@ Instant Steering はもともと車の製作画面にあるサスペンション
 ## オートシフト
 
 `dev.dwecirn.screwtweaks.autoshift.cfg` の `General/Enabled`。**F7 → Auto Shift** のチェックボックスと同じ設定です。RPM しきい値を越えてから 0.2 秒でシフトし（バニラは 1 秒）、クールダウンとトルクカットも短くなります。チェックを外すとゲーム本来の値に戻ります。
+
 ## その他のプラグイン
 
 - **Engine Sound** — 標準のセレクタがハイブリッド車で落としてしまう側のエンジン音を復活させ、瞬時トルクで両者をミックスします。
@@ -271,6 +268,3 @@ Instant Steering はもともと車の製作画面にあるサスペンション
   `ChPac02Tire::CalcFxyMz`（`src/chrono_vehicle/wheeled_vehicle/tire/ChPac02Tire.cpp`）、BSD-3-Clause を基にしています。
   Chrono のコードはビルドも同梱もしておらず、数式のみを移植しています。
 - タイヤスロット、パネルレジストリ、アシストスロットは本プロジェクトのオリジナルです。
-
-**BSD-3-Clause**。詳細は [`LICENSE`](LICENSE) を参照してください。
-

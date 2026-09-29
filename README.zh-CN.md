@@ -25,7 +25,7 @@
 这些模型是可替换的插槽：`ITireModel`、`IDamperModel`、`ITireVerticalModel`、`IBrakeAid`/`IDriveAid` 与面板宿主都是公开 API，每一个的实例见 [docs/extending.zh-CN.md](docs/extending.zh-CN.md)。
 
 两个物理模块的推理过程与实测到的游戏数据，分别在 [`docs/tire-model-spec.md`](docs/tire-model-spec.md) 与
-[`docs/suspension-model-spec.md`](docs/suspension-model-spec.md)。凡是游戏已经交给玩家的控制，这里一律不动：外置的刹车比例分配就曾因此被撤掉——刹车零件本来就带着自己的 `brakeforce` 属性。
+[`docs/suspension-model-spec.md`](docs/suspension-model-spec.md)。
 
 
 ---
@@ -45,13 +45,15 @@
 | `ScrewTweaks.PowerFactor` | 按引擎类型的功率系数，随车存档 | [其他插件](#其他插件) |
 
 按键：**F7** 开关面板，**F8** 把静态轮胎/轮子数据导出到 `BepInEx/ScrewTweaks.tire-dump.txt`，**F9** 录制 30 秒每轮轮胎遥测到 `BepInEx/ScrewTweaks.tire-telemetry.csv`。
+
 ## 安装
 
 1. 如果还没装，先给 Screw Drivers 目录装好 **[BepInEx 5 (x64)](https://github.com/BepInEx/BepInEx/releases)**（`Screw Drivers.exe` 旁边要有 `BepInEx/` 和 `winhttp.dll`）。
 2. 把所有 `ScrewTweaks.*.dll` 放进 `BepInEx/plugins/`。
 3. 启动游戏。`BepInEx/LogOutput.log` 里应该每个插件各有一行日志。
 
-> `ScrewTweaks.Panel.dll` **必须存在**。它是面板宿主，其他功能插件把各自的板块注册进去。其余插件都是可选的、互相独立的。
+> `ScrewTweaks.Panel.dll` 面板插件**必须安装**，所有插件都依赖它进行配置。
+> 其余插件如无特别说明，都是可选的、互相独立的。
 
 ---
 
@@ -89,8 +91,6 @@ dotnet build ScrewTweaks.sln --no-restore -m:1
 - **Steering** —— 瞬间转向与转向限制松弛
 - **Settings** —— 面板自身的设置，排在第一个：位置、语言，以及已加载的模块及各自版本
 
-面板打开时会解锁鼠标。板块按插件加载顺序排列。
-
 ### 面板设置
 
 **Settings** 是面板自己的标签页，两项设置都保存在 `dev.dwecirn.screwtweaks.panel.cfg`：
@@ -101,10 +101,6 @@ dotnet build ScrewTweaks.sln --no-restore -m:1
 | `Panel/Language` | `English` | 面板语言。`English`、`ChineseSimplified` 或 `Japanese` |
 
 缩放手柄（点状）画在**能跟着鼠标走的那一个角**：通常右下角；但当窗口贴在屏幕右缘时改画在左下角，因为那时向右生长是不可能的。
-
-语言作用于**所有板块**，不只是面板本身——某个插件的板块如果没提供译文，它就保持英文，所以切换语言不会变成半中半英的样子。算法名和模型名**不翻译**：它们就是配置文件里存的那串字符，也是传给 `EcuAids.Register` / `TireModels.Register` / `DamperModels.Register` 的字符串。
-
-README 和 `.cfg` 文件里的注释不受此影响，始终是英文。
 
 ---
 
@@ -261,6 +257,7 @@ Instant Steering 原本是造车界面里每个悬挂的开关。现在它是全
 ## 自动换挡
 
 `dev.dwecirn.screwtweaks.autoshift.cfg` 里的 `General/Enabled`，和 **F7 → Auto Shift** 里的勾选框是同一个设置。越过转速阈值后 0.2 秒就换挡（原版 1 秒），冷却和扭矩中断也更短；取消勾选会把游戏自己的数值写回去。
+
 ## 其他插件
 
 - **Engine Sound** —— 恢复原版选择器在混动车上丢掉的那一半引擎声音，并按瞬时扭矩把两者混合。
@@ -272,6 +269,3 @@ Instant Steering 原本是造车界面里每个悬挂的开关。现在它是全
   `ChPac02Tire::CalcFxyMz`（`src/chrono_vehicle/wheeled_vehicle/tire/ChPac02Tire.cpp`），BSD-3-Clause。
   项目**没有**编译或分发任何 Chrono 代码，只移植了公式。
 - 轮胎插槽、面板注册表、辅助算法插槽均为本项目原创。
-
-**BSD-3-Clause** 许可，见 [`LICENSE`](LICENSE)。
-
