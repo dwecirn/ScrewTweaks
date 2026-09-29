@@ -37,6 +37,12 @@ The models are replaceable slots: `ITireModel`, `IDamperModel`, `ITireVerticalMo
 `IBrakeAid`/`IDriveAid` and the panel host are public API, and
 [docs/extending.md](docs/extending.md) shows each one at work.
 
+The reasoning and the measured game data behind the two physics modules are in
+[`docs/tire-model-spec.md`](docs/tire-model-spec.md) and
+[`docs/suspension-model-spec.md`](docs/suspension-model-spec.md). Whatever the game already exposes to the
+player is left alone on purpose: an external brake bias was dropped from this suite once the brake part
+turned out to have a `brakeforce` property of its own.
+
 
 ---
 ## Modules
@@ -60,7 +66,7 @@ Keys: **F7** opens the panel, **F8** dumps static tire and wheel data to
 `BepInEx/ScrewTweaks.tire-telemetry.csv`.
 ## Install
 
-1. Install **BepInEx 5 (x64)** into your Screw Drivers folder if you have not already
+1. Install **[BepInEx 5 (x64)](https://github.com/BepInEx/BepInEx/releases)** into your Screw Drivers folder if you have not already
    (`BepInEx/` and `winhttp.dll` next to `Screw Drivers.exe`).
 2. Drop every `ScrewTweaks.*.dll` into `BepInEx/plugins/`.
 3. Launch the game. A log line per plugin should appear in `BepInEx/LogOutput.log`.
@@ -93,6 +99,9 @@ plugin's `.cfg`.
 
 Each plugin carries its own version, printed to `BepInEx/LogOutput.log` when it loads and listed in the
 panel's Settings tab. The bundle as a whole is only dated; the tags on GitHub are the releases.
+
+**Local reference material is not committed.** `ScrewTweaks/reference/` (a Project Chrono clone) and
+`ScrewTweaks/ScrewDrivers/` (the decompiled game) are gitignored.
 
 ## Panel
 
@@ -167,6 +176,25 @@ changes as you drive onto a different surface — so you can watch the per-tire 
 
 **F9** records 30 s of every wheel to `BepInEx/ScrewTweaks.tire-telemetry.csv`
 (`t, wheel, body, tire, tireGrip, BCDE, kappa, alphaDeg, kappaRaw, alphaRawDeg, Fx, Fy, Fz, vx, omega, fwdMax, sideMax, radius, sigma, peak, camberDeg, camberFx`).
+
+> **The slot owns more than the forces.** `WheelController.FrictionUpdate` also publishes the contact
+> speeds, the wheel RPM and the `wheelHit` slip values that the drivetrain and the TCS read back. The host
+> does that around your model, which is why a model only fills the forces, the slips and the wheel spin.
+>
+> **Publish the kinematic slip.** `forwardFriction.slip` / `sideFriction.slip` are the feedback channel the
+> drivetrain and the aids read. Publishing the relaxed value makes every aid react a relaxation length
+> late, and the wheels lock before the ABS responds.
+>
+> **Identity is resolved lazily**, from `WheelController.PartConfigurationWheel`, so a car spawned before
+> the plugin loaded has none until it is spawned again. The panel's *Tires seen* list shows what has been
+> captured.
+>
+> **Peak force** with `GripScale = 1` matches the native model's pre-clamp numbers. The native model then
+> clamps the total force vector to `loadCoefficient`, so its effective longitudinal peak is
+> `~loadCoefficient` while this one reaches `|D| * loadCoefficient * forceCoefficient` (~25% more at
+> `forceCoefficient = 1.35`). That is the friction ellipse taking its share.
+>
+> **NWH backend only.** The legacy wheel paths are untouched.
 
 ## Suspension physics
 
@@ -275,6 +303,14 @@ of being passed straight to the chassis. `docs/suspension-model-spec.md` §5.5 h
 including why **tyre damping, not the damper, is what controls wheel hop**, which is the thing to revisit
 if hop is ever too visible again.
 
+> **Bottomed out.** The game computes `damper.force` only in its `else if (hasHit)` branch, so on the bump
+> stop it reuses the previous step's value and a stale force goes into the total. This module evaluates it
+> there. With a non-`Native` model selected, that is the only place it changes the game's behaviour beyond
+> the damper law itself.
+>
+> **Scope.** Anti-roll bars and toe are out of frame; the work polishes the spring and damper that are
+> already there.
+
 ## ECU
 
 Two independent channels, each with a **registered algorithm** or one of two reserved modes:
@@ -296,6 +332,10 @@ Two independent channels, each with a **registered algorithm** or one of two res
 Selecting any algorithm **neutralises the game's own TCS/ABS** on the managed channel so the two do
 not fight. Engine braking runs through the same brake channel as the foot brake, so the ABS covers
 coasting as well.
+
+> **A missing aid falls back to `Native`.** If the config names an algorithm whose plugin is no longer
+> installed, the channel reverts to the game's own aid. Neutralising the game's aid with nothing to
+> replace it would silently remove ABS.
 
 ## Steering
 
@@ -326,77 +366,6 @@ the game ignores.
   mixes the two by instantaneous torque.
 - **Power Factor** — a per-engine-type power factor that travels with the car's saved file. Fully
   automatic: it injects and persists through Harmony patches and needs no key.
-## Behaviour notes and gotchas
-
-Collected because they are easy to get wrong and the symptoms are confusing.
-
-**The tire slot owns more than the forces.**
-`WheelController.FrictionUpdate` also publishes the contact speeds, the wheel RPM and the
-`wheelHit` slip values that the game's drivetrain and TCS read back. The slot host does all of that
-for you, before and after your model runs — that is why a model only has to fill the forces, the
-slips and the wheel spin.
-
-**Publish the *kinematic* slip, not your internal one.**
-`forwardFriction.slip` / `sideFriction.slip` are the game's feedback channel: `MechanicalOutputWheel`
-reads them for its own ABS/TCS, and the ECU aids read them too. With a relaxation-length model,
-publishing the relaxed value makes every aid react a relaxation length late — the wheels lock before
-the ABS responds. Publish what the wheel is kinematically doing.
-
-**Tire identity is resolved lazily, at the first physics step.**
-It comes from `WheelController.PartConfigurationWheel`, so a car that was already spawned before the
-plugin loaded will not have an identity until it is spawned again. The panel's **Tires seen** list
-shows what has been captured.
-
-**A missing aid falls back to `Native`, never to "managed but empty".**
-If the config names an algorithm whose plugin is no longer installed, the channel reverts to the
-game's own aid. Neutralising the game's aid with nothing to replace it would silently remove ABS.
-
-**Grip magnitude.**
-With `GripScale = 1` the peak matches the game's own pre-clamp numbers. Note the native model
-additionally clamps the *total* force vector to `loadCoefficient`, so its effective longitudinal
-peak is `~loadCoefficient` while ours is `|D| * loadCoefficient * forceCoefficient` (~25% higher with
-`forceCoefficient = 1.35`). That follows from replacing the native circle clamp with a real friction
-ellipse; it is deliberate and one setting away from parity.
-
-**The damper is not re-evaluated while the suspension is bottomed out.**
-`WheelController.SuspensionUpdate` only computes `damper.force` in its `else if (hasHit)` branch, so on
-the bump stop the previous step's force is reused and a stale value goes into the total. The suspension
-module evaluates it there instead. That is the only place it changes the game's behaviour beyond the
-damper law itself, and only when a non-`Native` model is selected.
-
-**Local reference material is not committed.**
-`ScrewTweaks/reference/` (a Project Chrono clone) and `ScrewTweaks/ScrewDrivers/` (the decompiled
-game) are gitignored. Keep them that way.
-
----
-
-**Only the NWH wheel backend is covered.** The legacy wheel paths are untouched.
-
-**Anti-roll bars and toe are out of scope.** The suspension work polishes the spring and damper that
-are already there.
-
-## Design notes
-
-The reasoning behind the tire model and the measured game data live in
-[`docs/tire-model-spec.md`](docs/tire-model-spec.md); the suspension measurements, the numbers behind the
-game's scaling and the damper interception design live in
-[`docs/suspension-model-spec.md`](docs/suspension-model-spec.md). If you are going to change either
-module, read its document first — they record what the game actually provides.
-
-Where the numbers come from:
-
-- **Taken from the game:** peak grip magnitude, slip curve shape (per tire, per surface), slip units,
-  camber input, torque input.
-- **Added by this suite:** camber thrust, camber softening, relaxation length, own wheel-spin
-  integration, a real combined-slip friction ellipse.
-- **Left alone on purpose:** the game's own tire balance, and any control the game already exposes to
-  the player.
-
-The last point has already dropped two ideas: an external brake bias (the game already has per-wheel
-brake strength through the brake part's `brakeforce` property) and a geometry-derived "off-road tires
-are worse on asphalt" penalty. In both cases the game already had a mechanism for it.
-
----
 
 ## Third-party
 
@@ -406,13 +375,5 @@ are worse on asphalt" penalty. In both cases the game already had a mechanism fo
   built or shipped; only the formula was ported.
 - The tire slot, panel registry and aid slots are original to this project.
 
-## License
+Licensed under **BSD-3-Clause**; see [`LICENSE`](LICENSE).
 
-BSD-3-Clause. See [`LICENSE`](LICENSE).
-
-Use, modify, redistribute and sell it, including as part of a closed-source mod. The only conditions
-are to keep the copyright notice, and not to use the author's name to endorse or promote a derived
-product without permission.
-
-The tire model ports a formula from Project Chrono, which is under the same license, so there is no
-mixed licensing to worry about.

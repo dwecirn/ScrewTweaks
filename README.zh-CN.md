@@ -44,7 +44,7 @@
 按键：**F7** 开关面板，**F8** 把静态轮胎/轮子数据导出到 `BepInEx/ScrewTweaks.tire-dump.txt`，**F9** 录制 30 秒每轮轮胎遥测到 `BepInEx/ScrewTweaks.tire-telemetry.csv`。
 ## 安装
 
-1. 如果还没装，先给 Screw Drivers 目录装好 **BepInEx 5 (x64)**（`Screw Drivers.exe` 旁边要有 `BepInEx/` 和 `winhttp.dll`）。
+1. 如果还没装，先给 Screw Drivers 目录装好 **[BepInEx 5 (x64)](https://github.com/BepInEx/BepInEx/releases)**（`Screw Drivers.exe` 旁边要有 `BepInEx/` 和 `winhttp.dll`）。
 2. 把所有 `ScrewTweaks.*.dll` 放进 `BepInEx/plugins/`。
 3. 启动游戏。`BepInEx/LogOutput.log` 里应该每个插件各有一行日志。
 
@@ -244,50 +244,6 @@ Instant Steering 原本是造车界面里每个悬挂的开关。现在它是全
 
 - **Engine Sound** —— 恢复原版选择器在混动车上丢掉的那一半引擎声音，并按瞬时扭矩把两者混合。
 - **Power Factor** —— 按引擎类型设置的功率系数，随车的存档一起走。**全自动**：通过 Harmony 注入并持久化，不需要键位。
-## 行为约定与坑
-
-这些很容易做错，而且出问题时的症状很难判断，所以单独列出来。
-
-**轮胎插槽负责的不只是力。**
-`WheelController.FrictionUpdate` 还负责发布接触点速度、轮子 RPM，以及 `wheelHit` 里的滑移值——游戏的动力系统和 TCS 会读回它们。这些都由插槽宿主在调用你的模型**前后**完成，所以模型只需要填力、填滑移、积分轮速。
-
-**要发布*运动学*滑移，不是你的内部滑移。**
-`forwardFriction.slip` / `sideFriction.slip` 是游戏的反馈通道：`MechanicalOutputWheel` 自己的 ABS/TCS 会读它，ECU 的辅助也会读它。如果用的是带松弛长度的模型却把松弛值发布出去，**所有辅助都会晚一个松弛长度才反应过来**——轮子已经锁死了 ABS 才开始动作。发布轮子**运动学上**正在发生的事。
-
-**轮胎身份是懒解析的，发生在第一个物理步。**
-它来自 `WheelController.PartConfigurationWheel`，所以插件加载**之前**就已经生成的车，在重新生成之前不会有身份。面板里的 **Tires seen** 列表会显示已经捕获到什么。
-
-**找不到算法时会回退到 `Native`，而不是"受管但空转"。**
-如果配置里写的算法对应的插件已经不在了，该通道会退回游戏自带的辅助。把游戏的辅助旁通掉却没有人接管，会**静默地让车没有 ABS**。
-
-**抓地力大小。**
-`GripScale = 1` 时峰值与游戏**未做 clamp 之前**的数值一致。注意原版还会额外把**合力向量**硬压到 `loadCoefficient`，所以它的有效纵向峰值是 `~loadCoefficient`，而我们是 `|D| * loadCoefficient * forceCoefficient`（在 `forceCoefficient = 1.35` 时高约 25%）。这是用真实摩擦椭圆替换原版圆形 clamp 的必然结果，是有意为之，且距"完全对齐"只差一个开关。
-
-**悬挂触底时阻尼不会被重算。**
-`WheelController.SuspensionUpdate` 只在 `else if (hasHit)` 分支里计算 `damper.force`，所以压在限位块上时用的是上一帧的旧值，而它仍然被算进了合力。悬挂模块在触底时照常求值。这是选中非 `Native` 模型时，它唯一一处改动游戏原有行为的地方。
-
-**本地参考资料不入库。**
-`ScrewTweaks/reference/`（Project Chrono 的克隆）和 `ScrewTweaks/ScrewDrivers/`（反编译的游戏）都已被 gitignore。请保持现状。
-
----
-
-**只覆盖 NWH 轮子后端。** 旧的轮子路径一概不动。
-
-**不含防倾杆与束角。** 悬挂部分打磨的是本来就有的弹簧与阻尼。
-
-## 设计说明
-
-轮胎模型的推理过程和实测到的游戏数据写在 [`docs/tire-model-spec.md`](docs/tire-model-spec.md)；悬挂的实测数据、游戏缩放的数值推导和阻尼接入设计写在 [`docs/suspension-model-spec.md`](docs/suspension-model-spec.md)。要改哪个模块，就先读哪一份——它们记录了游戏实际提供了什么。
-
-数值的来源：
-
-- **直接用游戏提供的：** 峰值抓地力大小、滑移曲线形状（按轮胎、按路面）、滑移量的单位、外倾输入、扭矩输入。
-- **套件新增的：** 外倾推力、外倾软化、松弛长度、自己的轮速积分、真正的合滑移摩擦椭圆。
-- **刻意不动的：** 游戏自己的轮胎平衡，以及游戏已经暴露给玩家的控件。
-
-最后一条已经否掉了两个想法：外置 brake bias（游戏本来就通过刹车盘的 `brakeforce` 属性提供每轮独立的刹车力度），以及"越野胎在沥青上更差"的几何推导惩罚。这两件事游戏本身都已经有机制了。
-
----
 
 ## 第三方
 
@@ -296,10 +252,5 @@ Instant Steering 原本是造车界面里每个悬挂的开关。现在它是全
   项目**没有**编译或分发任何 Chrono 代码，只移植了公式。
 - 轮胎插槽、面板注册表、辅助算法插槽均为本项目原创。
 
-## 许可
+**BSD-3-Clause** 许可，见 [`LICENSE`](LICENSE)。
 
-BSD-3-Clause，见 [`LICENSE`](LICENSE)。
-
-**随便用、随便改、随便再分发、随便商用**（包括做成闭源 mod）。只有两个条件：**保留版权声明**，以及**未经许可不得用作者名义背书或推广衍生作品**。
-
-轮胎模型从 Project Chrono 移植了一条公式，而 Chrono 用的是同一个许可证，所以不存在许可证混用问题。
