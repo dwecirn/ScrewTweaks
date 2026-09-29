@@ -24,6 +24,9 @@
 
 这些模型是可替换的插槽：`ITireModel`、`IDamperModel`、`ITireVerticalModel`、`IBrakeAid`/`IDriveAid` 与面板宿主都是公开 API，每一个的实例见 [docs/extending.zh-CN.md](docs/extending.zh-CN.md)。
 
+两个物理模块的推理过程与实测到的游戏数据，分别在 [`docs/tire-model-spec.md`](docs/tire-model-spec.md) 与
+[`docs/suspension-model-spec.md`](docs/suspension-model-spec.md)。凡是游戏已经交给玩家的控制，这里一律不动：外置的刹车比例分配就曾因此被撤掉——刹车零件本来就带着自己的 `brakeforce` 属性。
+
 
 ---
 ## 模块
@@ -72,6 +75,8 @@ dotnet build ScrewTweaks.sln --no-restore -m:1
 
 每个插件有各自的版本号：加载时会打印到 `BepInEx/LogOutput.log`，也可以在面板的 Settings 标签页里看到。
 整个套件只用日期标记，GitHub 上的标签就是历次发布。
+
+**本地参考资料不入库。** `ScrewTweaks/reference/`（Project Chrono 的克隆）与 `ScrewTweaks/ScrewDrivers/`（反编译的游戏）已被 gitignore。
 
 ## 面板
 
@@ -134,6 +139,16 @@ PartWheelDirt2 g= 0.30  BCDE=(  7.0, 1.10, 0.83, 1.00)  k= 0.021/ 0.000 a=  -4.1
 
 **F9** 会把 30 秒内每个轮子的数据录到 `BepInEx/ScrewTweaks.tire-telemetry.csv`
 （`t, wheel, body, tire, tireGrip, BCDE, kappa, alphaDeg, kappaRaw, alphaRawDeg, Fx, Fy, Fz, vx, omega, fwdMax, sideMax, radius, sigma, peak, camberDeg, camberFx`）。
+
+> **槽位负责的不只是力。** `WheelController.FrictionUpdate` 还会发布接触速度、轮子转速，以及动力总成与 TCS 回读的 `wheelHit` 滑移值。宿主会在你的模型前后把这些做完，所以模型只需要填力、滑移和轮子自转。
+>
+> **回写运动学滑移。** `forwardFriction.slip` / `sideFriction.slip` 是动力总成与辅助系统读取的反馈通道。回写松弛之后的值，会让每个辅助都晚一条松弛长度才反应过来——轮子先抱死，ABS 才响应。
+>
+> **轮胎识别是惰性解析的**，取自 `WheelController.PartConfigurationWheel`。插件加载前就已生成的车，要再生成一次才有识别信息；面板的 *Tires seen* 列表显示已经抓到的那些。
+>
+> **峰值力**在 `GripScale = 1` 时与原生模型钳位前的数值一致。原生模型随后会把合力向量钳到 `loadCoefficient`，所以它的有效纵向峰值是 `~loadCoefficient`，而这里能到 `|D| * loadCoefficient * forceCoefficient`（`forceCoefficient = 1.35` 时高约 25%）。这是摩擦椭圆应得的那一份。
+>
+> **仅 NWH 后端。** 旧的轮子路径一概不动。
 
 ## 悬挂物理
 
@@ -204,6 +219,10 @@ PartWheelDirt2 g= 0.30  BCDE=(  7.0, 1.10, 0.83, 1.00)  k= 0.021/ 0.000 a=  -4.1
 
 打开之后轮子会跟随路面、也会离地，尖锐载荷被轮胎吸收而不是直接传给车身。推理过程见 `docs/suspension-model-spec.md` §5.5——包括**为什么控制轮子跳动的是轮胎阻尼而不是阻尼器**：如果以后觉得跳动还是太明显，该动的就是这个数。
 
+> **触底的时候。** 游戏只在 `else if (hasHit)` 分支里计算 `damper.force`，所以压在限位块上时它沿用上一帧的值，一个陈旧的力就这样进了合力。本模块在那种情况下照常求值。选中非 `Native` 模型时，这是阻尼规律之外唯一一处改动游戏原有行为的地方。
+>
+> **范围。** 不含防倾杆与束角；这里打磨的是本来就有的弹簧与阻尼。
+
 ## ECU
 
 两条互相独立的通道，每条既可以选**已注册的算法**，也可以选两个保留模式之一：
@@ -223,6 +242,8 @@ PartWheelDirt2 g= 0.30  BCDE=(  7.0, 1.10, 0.83, 1.00)  k= 0.021/ 0.000 a=  -4.1
 | `Traction/Gain` | `3.0` | 滑移超过目标后削减驱动扭矩的力度 |
 
 选择任何算法时，都会**自动旁通该通道上游戏自带的 TCS/ABS**，避免两者互相打架。发 动机制动和脚刹走的是同一条刹车通道，所以滑行工况也由 ABS 覆盖。
+
+> **缺失的算法会回落到 `Native`。** 如果配置里写的算法所属插件已经不在了，该通道会退回游戏自带的辅助。把游戏的辅助旁通掉、却没有任何东西接替，等于悄悄删掉了 ABS。
 
 ## 转向
 

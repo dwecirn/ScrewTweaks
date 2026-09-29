@@ -24,6 +24,9 @@
 
 モデルは差し替え可能なスロットです。`ITireModel`、`IDamperModel`、`ITireVerticalModel`、`IBrakeAid`/`IDriveAid`、そしてパネルホストはいずれも公開 API で、それぞれの実例は [docs/extending.ja.md](docs/extending.ja.md) にあります。
 
+2 つの物理モジュールの根拠と実測したゲームデータは、[`docs/tire-model-spec.md`](docs/tire-model-spec.md) と
+[`docs/suspension-model-spec.md`](docs/suspension-model-spec.md) にあります。ゲームがすでにプレイヤーへ公開しているものには、意図的に手を入れていません。外部のブレーキ前後配分は、ブレーキパーツ自身が `brakeforce` プロパティを持っていたと分かった時点で取り下げました。
+
 
 ---
 ## モジュール
@@ -72,6 +75,8 @@ dotnet build ScrewTweaks.sln --no-restore -m:1
 
 各プラグインは個別のバージョンを持ちます。読み込み時に `BepInEx/LogOutput.log` へ出力され、パネルの
 Settings タブにも一覧で出ます。スイート全体は日付でしか管理しておらず、GitHub のタグがそのままリリースです。
+
+**ローカルの参考資料はコミットしません。** `ScrewTweaks/reference/`（Project Chrono のクローン）と `ScrewTweaks/ScrewDrivers/`（逆コンパイルしたゲーム）は gitignore されています。
 
 ## パネル
 
@@ -133,6 +138,16 @@ PartWheelDirt2 g= 0.30  BCDE=(  7.0, 1.10, 0.83, 1.00)  k= 0.021/ 0.000 a=  -4.1
 `k` / `a` は *緩和後 / 運動学的* の順に表示されます。`BCDE` は**現在実際に使われている**摩擦プリセットで、別の路面に乗ると変化するため、タイヤごとの曲線が切り替わる様子を直接確認できます。
 
 **F9** で 30 秒間の全ホイールのデータを `BepInEx/ScrewTweaks.tire-telemetry.csv` に記録します（`t, wheel, body, tire, tireGrip, BCDE, kappa, alphaDeg, kappaRaw, alphaRawDeg, Fx, Fy, Fz, vx, omega, fwdMax, sideMax, radius, sigma, peak, camberDeg, camberFx`）。
+
+> **スロットが担うのは力だけではありません。** `WheelController.FrictionUpdate` は接触速度、ホイール回転数、そしてドライブトレインと TCS が読み戻す `wheelHit` のスリップ値も公開します。宿主がそれらをあなたのモデルの前後で行うので、モデルが埋めるのは力・スリップ・ホイールの回転だけです。
+>
+> **運動学的なスリップを書き戻してください。** `forwardFriction.slip` / `sideFriction.slip` は、ドライブトレインとアシストが読むフィードバック経路です。緩和後の値を書き戻すと、どのアシストも緩和長 1 つ分遅れて反応し、ABS が動く前にホイールがロックします。
+>
+> **タイヤの識別は遅延解決**で、`WheelController.PartConfigurationWheel` から取得します。プラグインの読み込み前に生成済みの車は、もう一度生成するまで識別情報を持ちません。パネルの *Tires seen* リストに、取得できたものが出ます。
+>
+> **ピークフォース**は `GripScale = 1` で、標準モデルのクランプ前の値と一致します。標準モデルはその後、合力ベクトルを `loadCoefficient` にクランプするため、実効的な前後ピークは `~loadCoefficient` となり、こちらは `|D| * loadCoefficient * forceCoefficient`（`forceCoefficient = 1.35` で約 25% 高い）まで届きます。摩擦楕円が取り分を受け取っているだけのことです。
+>
+> **NWH バックエンドのみ。** 旧来のホイール経路には触れていません。
 
 ## サスペンション物理
 
@@ -203,6 +218,10 @@ PartWheelDirt2 g= 0.30  BCDE=(  7.0, 1.10, 0.83, 1.00)  k= 0.021/ 0.000 a=  -4.1
 
 オンにするとホイールが路面に追従し、離れることもできます。鋭い荷重はシャシーではなくタイヤが吸収します。根拠は `docs/suspension-model-spec.md` §5.5 にあります。**ホイールホップを抑えるのはダンパーではなくタイヤの減衰**だという点もそこで説明しています——ホップがまだ目立つと感じたら、まずそこを疑ってください。
 
+> **底付きのとき。** ゲームは `else if (hasHit)` 分岐でしか `damper.force` を計算しないため、バンプストップ上では前ステップの値を再利用し、古い力が合力に混ざります。本モジュールはそこでも評価します。`Native` 以外のモデルを選んでいるとき、ダンパーの法則以外でゲームの挙動が変わるのはこの 1 か所だけです。
+>
+> **範囲。** アンチロールバーとトーは対象外です。磨いているのは、もともとあるスプリングとダンパーです。
+
 ## ECU
 
 互いに独立した 2 つのチャンネル。それぞれ**登録済みアルゴリズム**か、2 つの予約モードのいずれかを選べます：
@@ -222,6 +241,8 @@ PartWheelDirt2 g= 0.30  BCDE=(  7.0, 1.10, 0.83, 1.00)  k= 0.021/ 0.000 a=  -4.1
 | `Traction/Gain` | `3.0` | 目標を超えたスリップに対して駆動トルクを絞る強さ |
 
 アルゴリズムを選ぶと、そのチャンネルで**ゲーム標準の TCS/ABS は自動的に無効化**され、互いに干渉しません。エンジンブレーキはフットブレーキと同じブレーキチャンネルを通るため、惰性走行時の挙動も ABS が担当します。
+
+> **存在しないアシストは `Native` に戻ります。** 設定に書かれたアルゴリズムのプラグインが既に無い場合、そのチャンネルはゲーム標準のアシストに戻ります。ゲームのアシストを無効化したまま何も引き継がないのは、気付かないうちに ABS を消すことと同じです。
 
 ## ステアリング
 
