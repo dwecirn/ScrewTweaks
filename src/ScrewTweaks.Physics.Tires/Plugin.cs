@@ -33,6 +33,12 @@ namespace ScrewTweaks.Physics.Tires
                 "CamberThrust",
                 0.015f,
                 "Camber thrust as a fraction of wheel load per degree of camber. Flip the sign if it pushes the wrong way.");
+
+            TireTuning.CombinedSlipConfig = Config.Bind(
+                "Pacejka",
+                "CombinedSlip",
+                1.0f,
+                "0 = longitudinal and lateral forces are independent, 1 = full ADAMS friction ellipse (locked/spinning wheels lose side grip).");
         }
 
         private void Start()
@@ -74,6 +80,7 @@ namespace ScrewTweaks.Physics.Tires
                 GUILayout.Space(10f);
                 DrawSlider("Grip scale", TireTuning.GripScaleConfig, 0.5f, 2f, "0.00");
                 DrawSlider("Camber thrust / deg", TireTuning.CamberThrustConfig, -0.08f, 0.08f, "0.000");
+                DrawSlider("Combined slip", TireTuning.CombinedSlipConfig, 0f, 1f, "0.00");
             }
 
             GUILayout.Space(10f);

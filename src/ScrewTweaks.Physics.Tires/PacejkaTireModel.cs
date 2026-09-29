@@ -11,19 +11,19 @@ namespace ScrewTweaks.Physics.Tires
     /// physics the native model is missing:
     ///
     /// - proper slip ratio / slip angle (own wheel-spin integration),
-    /// - friction ellipse for combined slip (native only clamps the vector magnitude),
+    /// - combined slip via the ADAMS friction ellipse,
     /// - camber thrust,
     /// - load sensitivity reused from the game (`loadGripCurve` / `maximumTireGripForce`).
     ///
-    /// Peak grip is intentionally matched to the native model so handling magnitude stays
-    /// comparable: `peak = |D| * loadGripCurve(Fz/Fz0) * maximumTireGripForce * forceCoefficient`.
+    /// Peak grip is kept close to the native model so handling magnitude stays comparable:
+    /// `peak = |D| * loadGripCurve(Fz/Fz0) * maximumTireGripForce * forceCoefficient`.
     /// </summary>
     internal sealed class PacejkaTireModel : ITireModel
     {
         private static readonly Vector4 FallbackBcde = new Vector4(11f, 2.05f, 0.925f, 0.97f);
 
         public string Name => "Pacejka";
-        public string Description => "Game BCDE as pure-slip shape + load sensitivity + friction ellipse + camber thrust + own wheel-spin integration.";
+        public string Description => "Game BCDE as pure-slip shape + load sensitivity + ADAMS friction ellipse + camber thrust + own wheel-spin integration.";
 
         public bool Apply(WheelController wc, float dt)
         {
@@ -69,21 +69,17 @@ namespace ScrewTweaks.Physics.Tires
             // --- pure slip (the game's BCDE is the shape; D is factored into the max) ---
             float kappaEff = kappa * wc.forwardFriction.slipCoefficient;
             float alphaEff = alpha * wc.sideFriction.slipCoefficient;
-            float fx = fwdMax * Mf(b, c, e, kappaEff);
-            float fy = sideMax * Mf(b, c, e, alphaEff);
+            float fxPure = fwdMax * Mf(b, c, e, kappaEff);
+            float fyPure = sideMax * Mf(b, c, e, alphaEff);
 
-            // --- combined slip: friction ellipse ---
-            float sx = fwdMax > 1e-4f ? Mathf.Abs(fx) / fwdMax : 0f;
-            float sy = sideMax > 1e-4f ? Mathf.Abs(fy) / sideMax : 0f;
-            float combined = Mathf.Sqrt(sx * sx + sy * sy);
-            if (combined > 1f)
-            {
-                fx /= combined;
-                fy /= combined;
-            }
+            // --- camber thrust (native has none) is part of the lateral force ---
+            fyPure += TireTuning.CamberThrust * wheel.camberAngle * fz;
 
-            // --- camber thrust (native has none) ---
-            fy += TireTuning.CamberThrust * wheel.camberAngle * fz;
+            // --- combined slip: ADAMS friction ellipse ---
+            CombineAdmsEllipse(fxPure, fyPure, fwdMax, sideMax, kappa, alpha, out float fxCombined, out float fyCombined);
+            float combine = Mathf.Clamp01(TireTuning.CombinedSlip);
+            float fx = Mathf.Lerp(fxPure, fxCombined, combine);
+            float fy = Mathf.Lerp(fyPure, fyCombined, combine);
 
             // --- tire reaction on the wheel spin ---
             omega -= fx * radius / inertia * dt;
@@ -101,6 +97,46 @@ namespace ScrewTweaks.Physics.Tires
         {
             float bx = b * x;
             return Mathf.Sin(c * Mathf.Atan(bx - e * (bx - Mathf.Atan(bx))));
+        }
+
+        /// <summary>
+        /// ADAMS friction ellipse, adapted from Project Chrono's
+        /// <c>ChPac02Tire::CalcFxyMz</c> (mode 4 with <c>use_friction_ellipsis</c>,
+        /// `src/chrono_vehicle/wheeled_vehicle/tire/ChPac02Tire.cpp`, BSD-3-Clause).
+        ///
+        /// Unlike a naive "scale the force vector if it leaves the ellipse" clamp, this ties the
+        /// split to the direction of the *slip vector*: a wheel that is sliding mostly
+        /// longitudinally (locked, spinning) loses lateral capacity and vice versa. That is what
+        /// makes a locked rear actually step out.
+        ///
+        /// Chrono: beta is the slip-vector angle, then
+        ///   mu_x_c = 1 / hypot(1/mu_x_act, tan(beta)/mu_y_max)
+        ///   mu_y_c = tan(beta) / hypot(1/mu_x_max, tan(beta)/mu_y_act)
+        /// and the forces are rescaled with those. Substituting the definitions collapses the
+        /// Fz and tan(beta) terms away, giving the closed form below.
+        /// </summary>
+        private static void CombineAdmsEllipse(
+            float fxPure, float fyPure, float fwdMax, float sideMax,
+            float kappa, float alpha, out float fx, out float fy)
+        {
+            fx = fxPure;
+            fy = fyPure;
+
+            if (fwdMax <= 1e-4f || sideMax <= 1e-4f)
+                return;
+
+            float a = kappa;                 // longitudinal slip component
+            float b = Mathf.Sin(alpha);      // lateral slip component
+
+            // mu_x_act / mu_y_max and mu_y_act / mu_x_max; Fz cancels out.
+            float r1 = Mathf.Abs(fxPure) / sideMax;
+            float r2 = Mathf.Abs(fyPure) / fwdMax;
+
+            float dx = Mathf.Sqrt(a * a + b * b * r1 * r1);
+            float dy = Mathf.Sqrt(a * a * r2 * r2 + b * b);
+
+            fx = dx > 1e-6f ? a * Mathf.Abs(fxPure) / dx : 0f;
+            fy = dy > 1e-6f ? b * Mathf.Abs(fyPure) / dy : 0f;
         }
     }
 }

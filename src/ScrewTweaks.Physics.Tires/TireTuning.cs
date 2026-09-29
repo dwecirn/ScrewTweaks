@@ -8,8 +8,12 @@ namespace ScrewTweaks.Physics.Tires
     {
         internal static ConfigEntry<float>? GripScaleConfig;
         internal static ConfigEntry<float>? CamberThrustConfig;
+        internal static ConfigEntry<float>? CombinedSlipConfig;
 
         internal static float GripScale => GripScaleConfig?.Value ?? 1f;
         internal static float CamberThrust => CamberThrustConfig?.Value ?? 0.015f;
+
+        /// <summary>0 = ignore combined slip (longitudinal and lateral independent), 1 = full ADAMS ellipse.</summary>
+        internal static float CombinedSlip => CombinedSlipConfig?.Value ?? 1f;
     }
 }
