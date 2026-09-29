@@ -14,6 +14,7 @@
     <AutoShiftKey>N</AutoShiftKey>
     <PanelKey>F7</PanelKey>
     <DumpKey>F8</DumpKey>
+    <TelemetryKey>F9</TelemetryKey>
   </PropertyGroup>
 
 </Project>

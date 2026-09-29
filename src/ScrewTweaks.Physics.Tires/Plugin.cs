@@ -3,6 +3,7 @@
 using System.Reflection;
 using BepInEx;
 using HarmonyLib;
+using ScrewTweaks.Physics.Tires.Generated;
 using ScrewTweaks.UI;
 using UnityEngine;
 
@@ -46,7 +47,16 @@ namespace ScrewTweaks.Physics.Tires
             TireModels.Init();
             Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), PluginInfo.GUID);
             Panel.Register("Tires", DrawSection);
+            TireRecorder.Log = Logger;
             Logger.LogInfo($"[{PluginInfo.Name}] version {PluginInfo.Version} loaded.");
+        }
+
+        private void Update()
+        {
+            if (Input.GetKeyDown(KeyBinds.Telemetry))
+                TireRecorder.Toggle();
+
+            TireRecorder.Update();
         }
 
         private void DrawSection()
@@ -84,7 +94,7 @@ namespace ScrewTweaks.Physics.Tires
             }
 
             GUILayout.Space(12f);
-            GUILayout.Label("Live wheels (drive, then read):");
+            GUILayout.Label($"Live wheels ({KeyBinds.Telemetry}: record 30s to CSV):");
             GUILayout.Label("  kappa | alpha deg | Fx/FxMax | Fy/FyMax | Fz | vx | omega");
             int count = TireTelemetry.Count;
             for (int i = 0; i < count; i++)

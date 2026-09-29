@@ -36,6 +36,8 @@ namespace ScrewTweaks.Physics.Tires
 
         internal static void Report(WheelController wc, in WheelSample sample)
         {
+            TireRecorder.Sample(wc, sample);
+
             for (int i = 0; i < _count; i++)
             {
                 if (Wheels[i] == wc)
