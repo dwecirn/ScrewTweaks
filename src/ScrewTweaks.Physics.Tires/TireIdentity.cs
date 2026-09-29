@@ -1,6 +1,6 @@
 #nullable enable
 
-using System.Runtime.CompilerServices;
+using System.Collections.Generic;
 using NWH.WheelController3D;
 
 namespace ScrewTweaks.Physics.Tires
@@ -16,32 +16,43 @@ namespace ScrewTweaks.Physics.Tires
     }
 
     /// <summary>
-    /// Per-wheel tire identity. Captured from <c>WheelPropertiesSetter.SetWheelProperties</c>,
-    /// which is the one place the game knows both the wheel and the part it was made from.
+    /// Per-wheel tire identity. Captured from <c>WheelPropertiesSetter</c>, which is the one place
+    /// the game knows both the wheel and the part it was made from.
+    ///
+    /// A plain dictionary rather than a ConditionalWeakTable: the latter is not enumerable on
+    /// .NET Framework, and the diagnostic panel needs to list what has been seen.
     /// </summary>
     internal static class TireIdentities
     {
-        private sealed class Holder
-        {
-            internal TireIdentity Identity;
-        }
+        private static readonly Dictionary<WheelController, TireIdentity> Table =
+            new Dictionary<WheelController, TireIdentity>();
 
-        private static readonly ConditionalWeakTable<WheelController, Holder> Table =
-            new ConditionalWeakTable<WheelController, Holder>();
+        private static readonly List<WheelController?> Stale = new List<WheelController?>();
 
-        internal static void Set(WheelController wheel, in TireIdentity identity)
-            => Table.GetOrCreateValue(wheel).Identity = identity;
+        internal static void Set(WheelController wheel, in TireIdentity identity) => Table[wheel] = identity;
 
         internal static bool TryGet(WheelController wheel, out TireIdentity identity)
+            => Table.TryGetValue(wheel, out identity) && identity.Captured;
+
+        /// <summary>Fills <paramref name="into"/> with every wheel that has a captured identity.</summary>
+        internal static void Collect(List<(WheelController Wheel, TireIdentity Identity)> into)
         {
-            if (Table.TryGetValue(wheel, out var holder))
+            into.Clear();
+
+            Stale.Clear();
+            foreach (var entry in Table)
             {
-                identity = holder.Identity;
-                return identity.Captured;
+                if (entry.Key == null) Stale.Add(entry.Key);
+            }
+            foreach (var wheel in Stale)
+            {
+                Table.Remove(wheel);
             }
 
-            identity = default;
-            return false;
+            foreach (var entry in Table)
+            {
+                if (entry.Value.Captured) into.Add((entry.Key, entry.Value));
+            }
         }
     }
 }

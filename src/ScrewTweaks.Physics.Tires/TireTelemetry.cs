@@ -36,7 +36,7 @@ namespace ScrewTweaks.Physics.Tires
     /// </summary>
     internal static class TireTelemetry
     {
-        private const int Capacity = 8;
+        private const int Capacity = 12;
 
         private static readonly WheelController?[] Wheels = new WheelController?[Capacity];
         private static readonly WheelSample[] Samples = new WheelSample[Capacity];

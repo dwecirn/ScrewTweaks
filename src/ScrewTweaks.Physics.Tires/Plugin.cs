@@ -1,8 +1,10 @@
 #nullable enable
 
+using System.Collections.Generic;
 using System.Reflection;
 using BepInEx;
 using HarmonyLib;
+using NWH.WheelController3D;
 using ScrewTweaks.Physics.Tires.Generated;
 using ScrewTweaks.UI;
 using UnityEngine;
@@ -20,6 +22,9 @@ namespace ScrewTweaks.Physics.Tires
     public class Plugin : BaseUnityPlugin
     {
         private bool _open;
+        private static readonly HashSet<PartType> SeenTypes = new HashSet<PartType>();
+        private static readonly List<(WheelController Wheel, TireIdentity Identity)> SeenWheels =
+            new List<(WheelController Wheel, TireIdentity Identity)>();
 
         private void Awake()
         {
@@ -105,6 +110,27 @@ namespace ScrewTweaks.Physics.Tires
                 DrawSlider("Combined slip", TireTuning.CombinedSlipConfig, 0f, 1f, "0.00");
                 DrawSlider("Relaxation length", TireTuning.RelaxationLengthConfig, 0f, 1.5f, "0.00");
                 DrawSlider("Geometry -> peak", TireTuning.GeometryShapeCouplingConfig, 0f, 2f, "0.00");
+            }
+
+            GUILayout.Space(12f);
+            GUILayout.Label("Tires seen (identity captured, independent of the live slots):");
+            try
+            {
+                SeenTypes.Clear();
+                TireIdentities.Collect(SeenWheels);
+                foreach (var entry in SeenWheels)
+                {
+                    var id = entry.Identity;
+                    if (!SeenTypes.Add(id.Type)) continue;
+                    GUILayout.Label($"  {id.Type}  grip={id.Grip,5:F2}  partR={id.PartRadius,6:F3}  partW={id.PartWidth,5:F3}");
+                }
+
+                if (SeenTypes.Count == 0)
+                    GUILayout.Label("  (none yet - enter a car)");
+            }
+            catch
+            {
+                // never break the panel
             }
 
             GUILayout.Space(12f);

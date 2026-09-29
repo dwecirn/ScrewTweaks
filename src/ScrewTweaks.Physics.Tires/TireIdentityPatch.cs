@@ -18,12 +18,24 @@ namespace ScrewTweaks.Physics.Tires
         [HarmonyPatch(typeof(WheelPropertiesSetter), nameof(WheelPropertiesSetter.SetWheelProperties))]
         internal static void AfterSetWheelProperties(WheelPropertiesSetter __instance, CalculatedPartWheel calculatedPartWheel)
         {
+            Capture(__instance, calculatedPartWheel.PartConfiguration.partType);
+        }
+
+        /// <summary>Tracks / tracked vehicles go through a separate setter.</summary>
+        [HarmonyPostfix]
+        [HarmonyPatch(typeof(WheelPropertiesSetter), nameof(WheelPropertiesSetter.SetTankWheelProperties))]
+        internal static void AfterSetTankWheelProperties(WheelPropertiesSetter __instance, CalculatedGearChain calculatedGearChain)
+        {
+            Capture(__instance, calculatedGearChain.PartConfiguration.partType);
+        }
+
+        private static void Capture(WheelPropertiesSetter setter, PartType type)
+        {
             try
             {
-                var wheel = __instance.transform.GetComponentInChildren<WheelController>();
+                var wheel = setter.transform.GetComponentInChildren<WheelController>();
                 if (wheel == null) return;
 
-                var type = calculatedPartWheel.PartConfiguration.partType;
                 var part = Part.MakePart(type);
 
                 TireIdentities.Set(wheel, new TireIdentity
