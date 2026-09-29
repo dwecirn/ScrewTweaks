@@ -115,7 +115,7 @@ content column takes the rest of the width. Each feature plugin registers a titl
 - **Steering** — Instant Steering and the steering limit relax
 - **Settings** — the panel's own settings, first in the list: side, language, and the loaded modules with their versions
 
-The panel takes the mouse and the input while it is open, so there is no need to press Escape first.
+While the panel is open the cursor is free, the mouse never reaches the game, and the keyboard still does.
 
 ### Panel Settings
 

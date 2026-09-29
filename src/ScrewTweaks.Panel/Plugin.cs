@@ -3,8 +3,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using BepInEx;
-using SappInput;
+using HarmonyLib;
 using SappUnityUtils.CursorManagement;
 using ScrewTweaks.Panel.Generated;
 using UnityEngine;
@@ -19,7 +20,7 @@ namespace ScrewTweaks.Panel
     }
 
     [BepInPlugin(PluginInfo.GUID, PluginInfo.Name, PluginInfo.Version)]
-    public class Plugin : BaseUnityPlugin, ICursorHider, IInputBlocker
+    public class Plugin : BaseUnityPlugin, ICursorHider
     {
         private const int WindowId = 0x5EC1;
 
@@ -50,7 +51,7 @@ namespace ScrewTweaks.Panel
 
         private bool _shown;
 
-        // True while the panel is registered with the game as a cursor hider and an input blocker.
+        // True while the panel holds the cursor and the game is cut off from the mouse.
         private bool _claiming;
 
         // Two separate selectors rather than one index: the section list is appended to while plugins
@@ -76,6 +77,17 @@ namespace ScrewTweaks.Panel
 
         private void Awake()
         {
+            try
+            {
+                Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), PluginInfo.GUID);
+            }
+            catch (Exception e)
+            {
+                // Every other module registers its tab through this plugin, so the panel has to come up
+                // even if the mouse patches do not. Without them the game sees the mouse while it is open.
+                Logger.LogWarning($"Mouse interception unavailable: {e.Message}");
+            }
+
             PanelSettings.TabSideConfig = Config.Bind(
                 "Panel",
                 "TabSide",
@@ -104,24 +116,20 @@ namespace ScrewTweaks.Panel
         }
 
         /// <summary>
-        /// Joins the game's own cursor and input arbitration while the panel is up. Setting
-        /// <c>Cursor.lockState</c> directly does not hold: the game's CursorManager rewrites it every
-        /// frame from its list of registered hiders, and the driving camera is one of them.
+        /// Takes the cursor and the mouse while the panel is up. The cursor goes through the game's
+        /// own arbitration, because CursorManager rewrites <c>Cursor.lockState</c> every frame from
+        /// its list of registered hiders and a direct write does not hold. The mouse goes through
+        /// <see cref="MouseInput"/>, because the game reads that one directly.
         /// </summary>
         private void Claim(bool claimed)
         {
             _claiming = claimed;
+            MouseInput.Claimed = claimed;
 
             if (claimed)
-            {
                 CursorManager.AddCursorHider(this);
-                InputAccess.AddInputBlocker(this);
-            }
             else
-            {
                 CursorManager.RemoveCursorHider(this);
-                InputAccess.RemoveInputBlocker(this);
-            }
         }
 
         private void OnGUI()
@@ -502,8 +510,5 @@ namespace ScrewTweaks.Panel
         bool ICursorHider.IsConfiningCursor() => false;
         bool ICursorHider.IsOnlyHidingCursor() => false;
         int ICursorHider.ProvidePriority() => 100;
-
-        // The panel is a menu: while it is up, clicks and keys belong to it and not to the game.
-        bool IInputBlocker.IsBlockingInput() => _shown;
     }
 }
