@@ -380,3 +380,59 @@ state (each model has its own `m_stepsize` → sub-stepping may be needed at our
 Files: `src/chrono_vehicle/wheeled_vehicle/tire/ChPac02Tire.cpp` (~70 KB) + `Pac02Tire.cpp`
 (~32 KB). The `.tir` loader (`SetMFParamsByFile`, `LoadSection*`) lives in `ChPac02Tire.cpp` and
 can be ported or replaced with a small C# TIR parser.
+
+---
+
+## 15. Measured game tire data (2026-09, from the F8 dump)
+
+The game exposes **no `.tir`-like data**. What a wheel actually carries:
+
+| Quantity | Measured | Note |
+|---|---|---|
+| `Grip` (per tire prefab) | −0.2 … 0.4 (mostly 0.1–0.3) | the only per-tire grip input |
+| `FrictionForward/Sideways` | **null on all wheel parts** | unused |
+| `maximumTireGripForce` | 8281.85 / 9689.76 | derived from `Grip` + mass by `WheelPropertiesSetter` |
+| `maximumTireLoad` | 8000 | |
+| `loadGripCurve` | (0:0) (0.4183:0.6691) (0.7228:0.843) (0.9993:0.9989) | load sensitivity, per wheel |
+| `gripFactorByWeight` | (0:1) (5057.1:1.8) (10094.25:2.4124) | super-linear in mass |
+| `forceCoefficient` | fwd 1.35 / 1.0, side 1.15 / 0.423 | shared prefab defaults |
+| `slipCoefficient` | fwd 1.0, side 0.423 | |
+| radius / mass / inertia | 0.3073 / 30 / 2.8332 | |
+
+Per-surface pure-slip curves are **shared `FrictionPreset`s** (`B, C, D, E`):
+
+| Surface | B | C | D | E | peak slip | peak μ (D) |
+|---|---|---|---|---|---|---|
+| asphalt | 11 | 2.05 | 0.925 | 0.97 | ≈ 0.125 | 0.925 |
+| dirt | 11 | 2.05 | 0.87 | 0.97 | ≈ 0.125 | 0.87 |
+| TankTracks2 | 11 | 2.05 | 0.7 | 0.97 | ≈ 0.125 | 0.7 |
+| spikes | 6 | 2 | 0.3 | 1 | ≈ 0.167 | 0.3 |
+| sand | 4.2 | 1.1 | 0.8 | 1 | ≈ 0.238 | 0.8 |
+
+**Conclusion:** a full PAC2002 / real `.tir` parameter set is **not derivable** from this data
+(no per-tire coefficients, no `Fz0`, no stiffnesses, no relaxation length). What we *do* get:
+one MF-shaped curve per surface + one load-sensitivity curve + a grip scalar. The model must
+therefore be **generated** from those, not loaded from a `.tir`.
+
+## 16. Decision — the "Pacejka-lite" model
+
+Family: **Pacejka-89-style magic formula with camber**, fed by a **parameter generator**
+(`Grip` + geometry + surface `BCDE` → model parameters).
+
+Implemented (2026-09, `src/ScrewTweaks.Physics.Tires/PacejkaTireModel.cs`):
+
+- pure slip `y = D*sin(C*atan(Bx - E*(Bx - atan(Bx))))` using the surface `BCDE`
+  (D factored into the max, shape from B/C/E) for **both** Fx and Fy;
+- peak grip matched to vanilla:
+  `peak = |D| * loadGripCurve(Fz/Fz0) * maximumTireGripForce * forceCoefficient`;
+- own wheel-spin integration (`I·dω/dt = Tdrive − Tbrake·sgn(ω) − Fx·r`);
+- combined slip = **friction ellipse** (vector normalisation);
+- **camber thrust** `Fy += k_camber · γ · Fz` (`k_camber` exposed as a slider);
+- slip inputs scaled by the game's `slipCoefficient`.
+
+Deferred to later iterations: relaxation length, camber-aware load sensitivity, aligning
+torque `Mz`, Dahl low-speed bristles, per-surface μ scaling beyond `BCDE`, `.tir` import.
+
+Rejected: porting `ChPac02Tire` verbatim — it needs `.tir` coefficients the game does not have.
+`ChFialaTire` stays excluded (Chrono docs: assumes zero camber).
+
