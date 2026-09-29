@@ -4,6 +4,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using BepInEx;
+using SappInput;
+using SappUnityUtils.CursorManagement;
 using ScrewTweaks.Panel.Generated;
 using UnityEngine;
 
@@ -17,7 +19,7 @@ namespace ScrewTweaks.Panel
     }
 
     [BepInPlugin(PluginInfo.GUID, PluginInfo.Name, PluginInfo.Version)]
-    public class Plugin : BaseUnityPlugin
+    public class Plugin : BaseUnityPlugin, ICursorHider, IInputBlocker
     {
         private const int WindowId = 0x5EC1;
 
@@ -47,6 +49,9 @@ namespace ScrewTweaks.Panel
         private const float MaxInitialHeight = 400f;
 
         private bool _shown;
+
+        // True while the panel is registered with the game as a cursor hider and an input blocker.
+        private bool _claiming;
 
         // Two separate selectors rather than one index: the section list is appended to while plugins
         // start, and Settings is not a section at all.
@@ -94,10 +99,28 @@ namespace ScrewTweaks.Panel
             // Also picks up a hand-edited config file.
             Loc.SetLanguage(PanelSettings.Language);
 
-            if (_shown)
+            if (_shown != _claiming)
+                Claim(_shown);
+        }
+
+        /// <summary>
+        /// Joins the game's own cursor and input arbitration while the panel is up. Setting
+        /// <c>Cursor.lockState</c> directly does not hold: the game's CursorManager rewrites it every
+        /// frame from its list of registered hiders, and the driving camera is one of them.
+        /// </summary>
+        private void Claim(bool claimed)
+        {
+            _claiming = claimed;
+
+            if (claimed)
             {
-                Cursor.visible = true;
-                Cursor.lockState = CursorLockMode.None;
+                CursorManager.AddCursorHider(this);
+                InputAccess.AddInputBlocker(this);
+            }
+            else
+            {
+                CursorManager.RemoveCursorHider(this);
+                InputAccess.RemoveInputBlocker(this);
             }
         }
 
@@ -471,5 +494,16 @@ namespace ScrewTweaks.Panel
             string text = selected ? $"● {label}" : $"  {label}";
             return GUILayout.Button(text, GUILayout.Width(96f));
         }
+
+        // The panel wants the cursor free, so it never hides or confines it. Its priority sits above
+        // the driving hider (0) and below the escape menu (101), so a game menu still takes over.
+        bool ICursorHider.ShouldBeConsidered() => _shown;
+        bool ICursorHider.IsHidingAndLockingCursor() => false;
+        bool ICursorHider.IsConfiningCursor() => false;
+        bool ICursorHider.IsOnlyHidingCursor() => false;
+        int ICursorHider.ProvidePriority() => 100;
+
+        // The panel is a menu: while it is up, clicks and keys belong to it and not to the game.
+        bool IInputBlocker.IsBlockingInput() => _shown;
     }
 }

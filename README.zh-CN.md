@@ -91,6 +91,8 @@ dotnet build ScrewTweaks.sln --no-restore -m:1
 - **Steering** —— 瞬间转向与转向限制松弛
 - **Settings** —— 面板自身的设置，排在第一个：位置、语言，以及已加载的模块及各自版本
 
+面板打开时会接管鼠标与输入，不必先按 ESC。
+
 ### 面板设置
 
 **Settings** 是面板自己的标签页，两项设置都保存在 `dev.dwecirn.screwtweaks.panel.cfg`：

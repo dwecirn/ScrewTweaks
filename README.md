@@ -115,6 +115,8 @@ content column takes the rest of the width. Each feature plugin registers a titl
 - **Steering** — Instant Steering and the steering limit relax
 - **Settings** — the panel's own settings, first in the list: side, language, and the loaded modules with their versions
 
+The panel takes the mouse and the input while it is open, so there is no need to press Escape first.
+
 ### Panel Settings
 
 The **Settings** tab is the panel's own, and both of its settings are saved to
