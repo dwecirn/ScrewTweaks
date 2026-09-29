@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using BepInEx.Configuration;
 using NWH.WheelController3D;
 using UnityEngine;
 
@@ -50,12 +51,26 @@ namespace ScrewTweaks.Physics.Tires
     {
         private static readonly List<ITireModel> Registered = new List<ITireModel>();
 
+        /// <summary>Persists the selection, so the model does not have to be picked every session.</summary>
+        internal static ConfigEntry<string>? SelectedConfig;
+
         internal static void Init()
         {
             Register(new NativeTireModel());
             Register(new PacejkaTireModel());
             Register(new ZeroGripTireModel());
-            Current = Registered[0];
+
+            Current = Find(SelectedConfig?.Value) ?? Registered[0];
+        }
+
+        private static ITireModel? Find(string? name)
+        {
+            if (string.IsNullOrEmpty(name)) return null;
+            foreach (var model in Registered)
+            {
+                if (model.Name == name) return model;
+            }
+            return null;
         }
 
         public static void Register(ITireModel model)
@@ -77,6 +92,11 @@ namespace ScrewTweaks.Physics.Tires
 
         public static ITireModel? Current { get; private set; }
 
-        public static void Select(ITireModel model) => Current = model;
+        public static void Select(ITireModel model)
+        {
+            Current = model;
+            if (SelectedConfig != null && SelectedConfig.Value != model.Name)
+                SelectedConfig.Value = model.Name;
+        }
     }
 }

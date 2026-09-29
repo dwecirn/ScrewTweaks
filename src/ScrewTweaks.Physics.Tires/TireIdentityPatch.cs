@@ -2,6 +2,7 @@
 
 using HarmonyLib;
 using NWH.WheelController3D;
+using UnityEngine;
 
 namespace ScrewTweaks.Physics.Tires
 {
@@ -21,9 +22,26 @@ namespace ScrewTweaks.Physics.Tires
             Capture(__instance, calculatedPartWheel.PartConfiguration.partType);
         }
 
-        /// <summary>Tracks / tracked vehicles go through a separate setter.</summary>
+        /// <summary>
+        /// Tracks / tracked vehicles go through a separate setter. There are two overloads of it
+        /// (the 7-argument one just forwards to this one), so the parameter list is given
+        /// explicitly instead of letting Harmony resolve the overload by name.
+        /// </summary>
         [HarmonyPostfix]
-        [HarmonyPatch(typeof(WheelPropertiesSetter), nameof(WheelPropertiesSetter.SetTankWheelProperties))]
+        [HarmonyPatch(
+            typeof(WheelPropertiesSetter),
+            nameof(WheelPropertiesSetter.SetTankWheelProperties),
+            new[]
+            {
+                typeof(CalculatedGearChain),
+                typeof(float),
+                typeof(int),
+                typeof(GameObject),
+                typeof(Rigidbody),
+                typeof(float),
+                typeof(float),
+                typeof(TankTrackSuspensionSettings),
+            })]
         internal static void AfterSetTankWheelProperties(WheelPropertiesSetter __instance, CalculatedGearChain calculatedGearChain)
         {
             Capture(__instance, calculatedGearChain.PartConfiguration.partType);

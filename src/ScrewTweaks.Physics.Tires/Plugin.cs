@@ -28,6 +28,12 @@ namespace ScrewTweaks.Physics.Tires
 
         private void Awake()
         {
+            TireModels.SelectedConfig = Config.Bind(
+                "Model",
+                "Selected",
+                "Native",
+                "Tyre model in use. Saved when you pick one in the panel, so it is remembered across sessions.");
+
             TireTuning.GripScaleConfig = Config.Bind(
                 "Pacejka",
                 "GripScale",
@@ -61,11 +67,27 @@ namespace ScrewTweaks.Physics.Tires
 
         private void Start()
         {
-            TireModels.Init();
-            Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), PluginInfo.GUID);
+            // Each step is isolated: a failure in one must not cost us the panel registration
+            // (that is how the Tires tab silently disappeared), and it must be logged.
+            Init("tire models", TireModels.Init);
+            Init("friction slot patch", () => Harmony.CreateAndPatchAll(typeof(TireSlot), PluginInfo.GUID));
+            Init("tire identity patch", () => Harmony.CreateAndPatchAll(typeof(TireIdentityPatch), PluginInfo.GUID));
+
             Panel.Register("Tires", DrawSection);
             TireRecorder.Log = Logger;
-            Logger.LogInfo($"[{PluginInfo.Name}] version {PluginInfo.Version} loaded.");
+            Logger.LogInfo($"[{PluginInfo.Name}] version {PluginInfo.Version} loaded (model: {TireModels.Current?.Name ?? "none"}).");
+        }
+
+        private void Init(string what, System.Action action)
+        {
+            try
+            {
+                action();
+            }
+            catch (System.Exception e)
+            {
+                Logger.LogError($"init failed ({what}): {e}");
+            }
         }
 
         private void Update()
