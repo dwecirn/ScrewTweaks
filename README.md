@@ -2,9 +2,9 @@
 
 **English** | [中文](README.zh-CN.md) | [日本語](README.ja.md)
 
-A BepInEx mod suite for **Screw Drivers**. It replaces the game's tire friction with a pluggable,
-physically modelled one that can be switched and tuned in game, adds ABS and traction control
-channels, and includes a few quality-of-life fixes.
+A BepInEx mod suite for **Screw Drivers**. The goal is to move the driving experience toward sim
+racing: real tire slip behaviour, driver aids built on top of it, and a few quality-of-life fixes.
+The tire model and the ECU are the means to that end.
 
 The suite is split into independent plugins, so you can install, enable and tune them separately.
 Everything is configured from one shared in-game panel plus plain `.cfg` files.

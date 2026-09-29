@@ -1,10 +1,13 @@
-# Tire Model Spec (working draft)
+# Tire Model Spec
 
-Design reference for a drop-in **tire model slot** that can replace the game's NWH
-`WheelController3D` friction. Target model: **PAC2002 / MF 5.2** (Pacejka Magic Formula),
-including combined slip, relaxation length and wheel spin dynamics.
+Design record for the tire physics in **ScrewTweaks**, a BepInEx suite whose goal is to move
+Screw Drivers' driving experience toward sim racing. The tire model is one of the means: it replaces
+the game's NWH `WheelController3D` friction with a real slip-based model, selected per slot
+(`Native` fallback + `Pacejka`), with all inputs taken from the game's own data.
 
-> Status: research/spec only. No code yet. Field names are English on purpose.
+> Status: the `Pacejka` model is implemented and in use. This document records the measured game
+> data and the reasoning; sections 15-19 are the current state, earlier sections are the original
+> research and are kept for context. Field names are English on purpose.
 
 ---
 
