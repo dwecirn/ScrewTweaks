@@ -8,15 +8,18 @@ using UnityEngine;
 namespace ScrewTweaks.Steering
 {
     /// <summary>
-    /// Applies the "Instant Steering" toggle to the car's FrontWheelsSteerer.
+    /// Applies the Instant Steering setting to every car's FrontWheelsSteerer.
     ///
     /// The game ramps the wheel angle with Mathf.MoveTowards using the private fields
     /// "steerSpeedBySpeed" (degrees/second curve) and "steerBackSpeed", but only for binary
     /// (keyboard / d-pad) input; analog sticks bypass them via the "_useDirectDrive" path.
     ///
-    /// When any steerable suspension on the car has the toggle on, we scale both fields by a
-    /// huge factor so the wheels reach the target in a single frame - effectively the same as
-    /// analog direct drive. The originals are captured once per steerer so nothing compounds.
+    /// When the setting is on we scale both fields by a huge factor so the wheels reach the target in a
+    /// single frame - effectively the same as analog direct drive. The originals are captured once per
+    /// steerer so nothing compounds.
+    ///
+    /// The setting is global and lives in Saveables, so a change made in the panel or in the game's
+    /// controls page is picked up by <see cref="Plugin"/> and pushed to the cars in the world.
     /// </summary>
     [HarmonyPatch]
     internal static class SteeringSpeedApplier
@@ -30,7 +33,8 @@ namespace ScrewTweaks.Steering
             internal float Applied = -1f;
         }
 
-        private static readonly ConditionalWeakTable<FrontWheelsSteerer, State> States = new();
+        private static readonly ConditionalWeakTable<FrontWheelsSteerer, State> States =
+            new ConditionalWeakTable<FrontWheelsSteerer, State>();
 
         private static readonly AccessTools.FieldRef<FrontWheelsSteerer, AnimationCurve> TurnCurveRef =
             AccessTools.FieldRefAccess<FrontWheelsSteerer, AnimationCurve>("steerSpeedBySpeed");
@@ -40,71 +44,37 @@ namespace ScrewTweaks.Steering
 
         [HarmonyPostfix]
         [HarmonyPatch(typeof(SimpleCar2), "ApplyCar", typeof(CalculatedCar), typeof(byte[]), typeof(byte[]))]
-        internal static void ApplyCarPostfix(SimpleCar2 __instance, CalculatedCar car, byte[] baguetteBytes)
+        internal static void ApplyCarPostfix(SimpleCar2 __instance)
         {
             try
             {
                 var steerer = __instance.FrontWheelsSteerer;
                 if (steerer == null) return;
 
-                bool enabled = ReadEnabledFromCar(car) || ReadEnabledFromBytes(baguetteBytes);
-                Apply(steerer, enabled ? InstantMultiplier : 1f);
+                Apply(steerer, SteeringSettings.InstantSteering ? InstantMultiplier : 1f);
             }
             catch
             {
-                // Never let this break car spawning.
+                // never let this break car spawning
             }
         }
 
-        /// <summary>Reads the toggle from the freshly analysed car (preferred source).</summary>
-        private static bool ReadEnabledFromCar(CalculatedCar car)
+        /// <summary>Push the current setting onto every car in the world.</summary>
+        internal static void ApplyToAll()
         {
-            if (car == null) return false;
             try
             {
-                foreach (var part in car.Parts)
+                float multiplier = SteeringSettings.InstantSteering ? InstantMultiplier : 1f;
+                foreach (var steerer in UnityEngine.Object.FindObjectsByType<FrontWheelsSteerer>(
+                             FindObjectsSortMode.None))
                 {
-                    if (part?.PartConfiguration == null) continue;
-                    if (!SteeringSpeed.IsSteerSusp(part.PartConfiguration.partType)) continue;
-
-                    var props = part.Properties;
-                    if (props == null) continue;
-
-                    foreach (var prop in props)
-                    {
-                        if (prop.PropertyName != SteeringSpeed.PropertyName) continue;
-                        try { if (Convert.ToInt32(prop.PropertyType?.Value) == 1) return true; } catch { }
-                    }
+                    if (steerer != null) Apply(steerer, multiplier);
                 }
             }
-            catch { }
-            return false;
-        }
-
-        /// <summary>Fallback: reads the toggle straight from the saved .baguette bytes.</summary>
-        private static bool ReadEnabledFromBytes(byte[]? baguetteBytes)
-        {
-            if (baguetteBytes == null || baguetteBytes.Length == 0) return false;
-            try
+            catch
             {
-                var properties = FileLoader.LoadSettingsFromBytes(baguetteBytes);
-                if (properties == null) return false;
-
-                foreach (var cfg in properties.PartConfigs)
-                {
-                    if (!SteeringSpeed.IsSteerSusp(cfg.partType)) continue;
-                    var props = properties.GetProperties(cfg);
-                    if (props == null) continue;
-
-                    foreach (var prop in props)
-                    {
-                        if (prop.PropertyName != SteeringSpeed.PropertyName) continue;
-                        try { if (Convert.ToInt32(prop.PropertyType?.Value) == 1) return true; } catch { }
-                    }
-                }
+                // ignore
             }
-            catch { }
-            return false;
         }
 
         private static void Apply(FrontWheelsSteerer steerer, float multiplier)

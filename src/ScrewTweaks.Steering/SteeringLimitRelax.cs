@@ -23,7 +23,7 @@ namespace ScrewTweaks.Steering
     [HarmonyPatch]
     internal static class SteeringLimitRelax
     {
-        internal const string Key = "screwtweaks_steerlimitrelax";
+        internal const string Key = SteeringSettings.LimitRelaxKey;
 
         private sealed class State
         {
