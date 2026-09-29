@@ -5,9 +5,10 @@ Design record for the suspension physics in **ScrewTweaks**, the module that liv
 here is the implementation that happens to ship, not the only one the suite accepts. Field names are
 English on purpose.
 
-> **Status.** Damper slot implemented and selectable (`DamperModels` / `IDamperModel`). The spring is
-> deliberately left alone. Sections 2 to 4 are the measurements this is based on, section 5 is what the
-> module does, section 7 is what is not done yet.
+> **Status.** Two slots implemented and selectable: the damper (`DamperModels` / `IDamperModel`) and the
+> wheel's vertical freedom (`TireVerticalModels` / `ITireVerticalModel`). The spring is deliberately left
+> alone. Sections 2 to 4 are the measurements this is based on, section 5 is what the module does,
+> section 7 is what is not done yet.
 
 ---
 
@@ -119,20 +120,41 @@ Dead data and dead code found on the way:
 None of the three are touched by this module. They are recorded because they are things a suspension
 mod might reasonably want, and they are the game's own data if anyone does.
 
-## 4. The ceiling: no unsprung mass
+## 4. The wheel has no vertical degree of freedom
 
-The wheel has no vertical degree of freedom. `spring.length` is *assigned* the distance to the contact
-point every step, so the tire is rigid and the wheel is massless vertically. There is no unsprung mass
-and no tire vertical compliance. Consequences:
+`spring.length` is *assigned* the distance to the contact point every step, so the tire is rigid and the
+wheel has no vertical mass of its own. Consequences:
 
 - kerbs, expansion joints and landings are pure impulses; only the damper can absorb them,
 - a real tire is a ~200 kN/m spring in series, so without it every load spike goes straight into the
   chassis,
 - the contact patch load changes instantly, with no tire-side filtering.
 
-The real fix is a two-mass quarter car (sprung mass + unsprung mass + tire spring), which means owning
-`SuspensionUpdate` rather than correcting one term of it. That is deliberately not attempted here - see
-section 7.
+It also cannot be fixed from outside the method. The game's bottom-out test, its force and the wheel's
+visible position all fall out of the length it has just written, so correcting one term of
+`SuspensionUpdate` - which is what the damper slot does - always leaves a wheel that is still rigid. A
+vertical degree of freedom means owning the method; see section 5.5.
+
+What the game does hand over is the signal. The raycast already reports how far the tyre is from the
+ground (`WheelHit.distanceFromTire`) and the assignment throws it away.
+
+### 4.1 Why it is not free: stiffness against the step size
+
+The physics step is 0.02 s in single player - `AdjustTimeScale` resets `Time.fixedDeltaTime` to exactly
+that, and the per-platform value lives in a ScriptableObject the game logs as `Set fixed timestep to ...`
+- and 0.005 s in multiplayer.
+
+A real tire is stiff, so the unsprung mode is fast: `omega = sqrt(k/m)`. With a 200 kN/m tire and the
+game's own wheel masses the mode runs from about 9 Hz (a 60 kg wheel) to 41 Hz (a 3 kg skateboard wheel).
+Explicit integration is only stable below `omega*dt = 2`, which at 50 Hz means 15.9 Hz, so the light
+wheels would blow up.
+
+That is why the shipped model is parameterised by a *target frequency* rather than by a stiffness in N/m.
+Every wheel then has the same `omega` and therefore the same stability margin, and a heavy car
+automatically gets a stiff tire and a go-kart a soft one - the same trick the game itself uses for
+springs, where `maxForce` is chosen so the static deflection is mass-independent.
+`TireVerticalTuning.SubstepsFor` derives the substep count from `omega*dt` rather than trusting the
+setting, so the integration cannot be made unstable from the panel.
 
 ## 5. What this module does
 
@@ -218,6 +240,52 @@ Multiplayer: the wheel sync message carries only suspension distances and steeri
 force is computed locally on each machine. Both ends need the same model selected or the car will behave
 differently on each side. The same is true of the tire slot.
 
+### 5.5 The wheel's vertical freedom: `TireVerticalModels` / `ITireVerticalModel`
+
+With a non-Native model selected, `WheelVerticalSlot` **replaces** `SuspensionUpdate` outright and gives
+each wheel a two-state vertical model: the suspension length becomes an integrated state instead of an
+assignment, and the tyre pushes back through the model.
+
+Kept as the game has it:
+
+- the hit test and the wheel-hit averaging,
+- the geometry that works out the wheel centre a tyre would need in order to just touch. That is what
+  turns the ground into a *suspension length*, and it is where the deflection comes from,
+- the force application point (the mount) and the contact-normal cosine.
+
+Deliberately different:
+
+- the length is integrated, in substeps, under the tyre force, the suspension force and gravity;
+- the chassis is also pulled by the wheel while airborne, instead of the suspension going quiet. `hasHit`
+  no longer zeroes the spring and damper forces: a hanging wheel is a real load, and so is a drooping one;
+- the travel stops are inelastic, and whatever force they have to carry is transmitted to the chassis.
+  Without that, a fully bottomed-out suspension would let the car sink through its own wheel;
+- the game's separate bottom-out force term is gone. The tyre is a progressive bump stop now, and it is
+  the thing that should stop the car;
+- the wheel's load is the **tyre's** vertical force rather than the suspension's, written back in a
+  postfix on `WheelUpdate` before `FrictionUpdate` reads it. Grip follows the contact patch, and the two
+  forces are no longer the same number.
+
+The deflection a model sees is `length - groundLength`, so a wheel sitting exactly on the ground reads 0.
+The rate is the *relative* rate between wheel and ground - the geometry's own rate is subtracted - which
+is what makes a chassis dropping onto a stationary wheel count.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `TireVertical/Model` | `Native` | `Native` = the game's rigid wheel, untouched. `Linear` = the spring-and-damper tyre |
+| `TireVertical/Frequency` | `13.0` | Target unsprung natural frequency in [Hz]. This is what sets the tyre stiffness |
+| `TireVertical/DampingRatio` | `0.07` | Tyre damping as a fraction of critical |
+| `TireVertical/MassScale` | `1.00` | Multiplier on the wheel part's mass, which is the unsprung mass |
+| `TireVertical/Substeps` | `4` | Requested substeps; the host raises it when `omega*dt` needs more |
+
+For scale: the default on a 20 kg wheel with a 0.02 s step works out to about 133 kN/m, 228 N.s/m and 4
+substeps, which is within a stone's throw of a real tyre. The panel prints the actual numbers for the
+current car, so the frequency-to-stiffness relationship is visible instead of implied.
+
+Everything above the wheel is untouched. `hasHit`, `wheelHit`, the surface and road-colour detection and
+the ~70 systems that read them - dust, skidmarks, particles, sound, damage, torque distribution - keep
+their own meaning, so a wheel that is off the ground in the model is still "grounded" to them.
+
 ## 6. What to measure in game
 
 The numbers in section 2 are derived from the code and have not been verified in a running game.
@@ -232,19 +300,29 @@ Specifically:
   this visible at a glance: it is computed as `bumpForce * |v|`, so a mismatch means the curve is not the
   identity.
 - **Whether the split is felt.** With `ReboundFloor = 0` the clamp caps rebound near full extension.
+- **The step size.** The whole stability argument in section 4.1 assumes 0.02 s. The game logs
+  `Set fixed timestep to ...`, and the panel's summary line prints the value it is actually using.
+- **The vertical model.** With `TireVertical/Model = Linear` the panel prints each wheel's deflection and
+  tyre force. At rest the deflection should be around `staticLoad / stiffness` - about 17 mm on the
+  default setup - and it should not grow. If it does, the substep count is the thing to look at
+  (`SubstepsFor` is supposed to have prevented that already, so a blow-up would be a bug, not a setting).
+  A wheel that is genuinely off the ground should read a negative deflection.
 
 ## 7. Deferred
 
-1. **Two-mass quarter car** (unsprung mass + tire vertical spring in series with the suspension). The
-   real fix for kerbs and landings; requires owning `SuspensionUpdate` instead of correcting one term.
-   This is the natural next step and the reason the interception is a postfix on that method - the same
-   patch point can grow into a full replacement.
-2. **Spring model slot.** Nothing to fix today, and `progressiveness` nominally covers shape. A slot
-   would only be worth adding alongside a working progressiveness or an unsprung-mass model.
-3. **Honouring `Part.SuspensionDamper`** (the dead 1.3 on Race parts). It restores the game's own data
-   rather than rebalancing it, but it does change car balance, so it is off the table unless the user
-   asks for it.
-4. **Fixing `progressiveness`** so it moves the curve values and not only the tangents.
-5. **Per-direction knee and blow-off** (real dampers have different shim stacks in bump and rebound).
-   The model API allows it; the shipped model shares one shape scaled by `ReboundRatio` to keep the
-   panel to four sliders.
+1. **Spring model slot.** Nothing to fix today: the spring is used over its whole domain and the parts are
+   already tuned to a common frequency. Only worth adding alongside item 2.
+2. **Fixing `progressiveness`** so it moves the curve values and not only the tangents.
+3. **Anti-squat / anti-dive.** `WheelController.squat = 0.2f` is live - `UpdateForces` turns
+   `forwardFriction.force * radius * squat` into a couple on the chassis - but it has no part property and
+   no UI, so it cannot be adjusted. Note the coupling: it scales the *tire force*, so changing tire model
+   changes the car's pitch under power. `IsChassisTorqueEnabled` is the neighbouring dead field (never
+   assigned, so its branch never runs), and `DummyRigidbody` is written but never read.
+4. **Honouring `Part.SuspensionDamper`** (the dead 1.3 on Race parts). It restores the game's own data
+   rather than rebalancing it, but it does change car balance, so it is off the table unless the user asks
+   for it.
+5. **Per-direction knee and blow-off** (real dampers have different shim stacks in bump and rebound). The
+   model API allows it; the shipped model shares one shape scaled by `ReboundRatio` to keep the panel to
+   four sliders.
+6. **A tyre that is not linear in the vertical** - progressivity, load dependence, separation. The slot
+   accepts it; nothing ships it.

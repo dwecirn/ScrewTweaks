@@ -25,7 +25,8 @@ namespace ScrewTweaks.Physics.Suspension
     {
         private const float ScanInterval = 2f;
 
-        private bool _open;
+        private bool _damperOpen;
+        private bool _verticalOpen;
         private WheelController[] _wheels = Array.Empty<WheelController>();
         private float _nextScan;
 
@@ -36,6 +37,14 @@ namespace ScrewTweaks.Physics.Suspension
                 "Selected",
                 "Native",
                 "Damper model in use. Saved when you pick one in the panel, so it is remembered across sessions.");
+
+            TireVerticalModels.SelectedConfig = Config.Bind(
+                "TireVertical",
+                "Model",
+                "Native",
+                "Tyre vertical model. Native = the game's own wheel: rigid in the vertical, snapped to the " +
+                "ground every step, no unsprung mass. Linear = the tyre becomes a spring and damper against " +
+                "the ground and the wheel hang on the suspension above it.");
 
             DamperTuning.ReboundRatioConfig = Config.Bind(
                 "Damper",
@@ -73,6 +82,39 @@ namespace ScrewTweaks.Physics.Suspension
                 "spring force is truncated and stops doing anything. 0 = the game's behaviour, " +
                 "1 = up to about 1 g of downward pull. Anything above 1 risks dragging the chassis " +
                 "into the terrain on a crest.");
+
+            TireVerticalTuning.FrequencyConfig = Config.Bind(
+                "TireVertical",
+                "Frequency",
+                13.0f,
+                "Target unsprung natural frequency in [Hz]. This, not a number in N/m, is what sets the " +
+                "tyre stiffness: a heavy car with a big wheel gets a stiff tyre and a go-kart a soft one, " +
+                "and every wheel ends up equally far from the integration's stability limit. Real cars " +
+                "are around 10 to 15.");
+
+            TireVerticalTuning.DampingRatioConfig = Config.Bind(
+                "TireVertical",
+                "DampingRatio",
+                0.07f,
+                "Tyre vertical damping as a fraction of critical. Real tyres sit around 0.05 to 0.1.");
+
+            TireVerticalTuning.MassScaleConfig = Config.Bind(
+                "TireVertical",
+                "MassScale",
+                1.0f,
+                "Multiplier on the wheel part's own mass, which is the unsprung mass. The game only ever " +
+                "used that number for rotational inertia; a real corner also carries the hub and half the " +
+                "suspension arms, so this is where that goes.");
+
+            TireVerticalTuning.SubstepsConfig = Config.Bind(
+                "TireVertical",
+                "Substeps",
+                4,
+                new ConfigDescription(
+                    "Substeps per physics step for the wheel's vertical integration. The host raises this " +
+                    "automatically when the frequency and the step size need more, so this can only ask " +
+                    "for extra work, never for an unstable step.",
+                    new AcceptableValueRange<int>(1, TireVerticalTuning.MaxSubsteps)));
         }
 
         private void Start()
@@ -80,69 +122,15 @@ namespace ScrewTweaks.Physics.Suspension
             Localize();
 
             Init("damper models", DamperModels.Init);
-            Init("suspension patch", () => Harmony.CreateAndPatchAll(typeof(DamperSlot), PluginInfo.GUID));
+            Init("tyre vertical models", TireVerticalModels.Init);
+            Init("suspension patches",
+                () => Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), PluginInfo.GUID));
 
             PanelHost.Register("Suspension", DrawSection);
-            Logger.LogInfo($"[{PluginInfo.Name}] version {PluginInfo.Version} loaded (model: {DamperModels.Current?.Name ?? "none"}).");
-        }
-
-        /// <summary>Panel strings. Model names and units are identifiers and stay as they are.</summary>
-        private static void Localize()
-        {
-            // Keyed off the models' own Description values, so a translation can never drift away from
-            // the string it is meant to translate.
-            string n = new NativeDamperModel().Description;
-            string d = new DigressiveDamper().Description;
-
-            Loc.Add(PanelLanguage.ChineseSimplified,
-                ("Suspension", "悬挂"),
-                ("Damper model: {0}", "阻尼模型：{0}"),
-                (n, "游戏自带的阻尼，未改动：力 = 系数 × |速度|，压缩与回弹用同一个系数，没有卸压。"),
-                (d, "压缩/回弹分离 + 卸压曲线。慢速时更硬、冲击时更软，所以车身受控而路缘石不颠。把滑条调回去即可复刻游戏的线性阻尼。"),
-                ("Rebound / bump", "回弹 / 压缩"),
-                ("Low-speed gain", "低速增益"),
-                ("Knee velocity", "拐点速度"),
-                ("Blow-off slope", "卸压斜率"),
-                ("Pull-down floor", "下拉下限"),
-                ("Gain 1.00 + blow-off 1.00 + ratio 1.00 = exactly the game.",
-                    "增益 1.00 + 卸压 1.00 + 比例 1.00 = 完全等于原版。"),
-                ("Pull-down floor 0 = the game's clamp: the damper never pulls the body down.",
-                    "下拉下限 0 = 游戏的钳位：阻尼永远不会把车身往下拉。"),
-                ("Pull-down floor {0}: the damper may pull the body down by up to that fraction of the wheel's static load.",
-                    "下拉下限 {0}：阻尼最多可以把车身往下拉到“该轮静态载荷 × {0}”。"),
-                ("Raise it only if rebound feels like it runs out near full extension.",
-                    "只有在感觉“回弹快伸到底时没劲”时才需要调高它。"),
-                ("Grounded wheels (each row is one physics step, live):", "接地轮（每行是一个物理步，实时）："),
-                ("  wheel              comp     C Ns/m   dir  v m/s    damper N    game N   spring N",
-                    "  轮子               压缩   C Ns/m   方向  v m/s     阻尼 N     原版 N    弹簧 N"),
-                ("bump", "压缩"),
-                ("reb", "回弹"),
-                ("  (no grounded wheels)", "  （没有接地的轮子）"));
-
-            Loc.Add(PanelLanguage.Japanese,
-                ("Suspension", "サスペンション"),
-                ("Damper model: {0}", "ダンパーモデル: {0}"),
-                (n, "ゲーム標準のダンパーそのまま：力 = 係数 × |速度|。圧縮と伸張で同じ係数、ブローオフなし。"),
-                (d, "圧縮／伸張の分離 + ブローオフ曲線。低速では硬く、鋭い入力では軟らかく。ボディを制御しつつ縁石が突き上げません。スライダーを戻せばゲームの線形ダンパーを再現できます。"),
-                ("Rebound / bump", "伸張 / 圧縮"),
-                ("Low-speed gain", "低速ゲイン"),
-                ("Knee velocity", "ニー速度"),
-                ("Blow-off slope", "ブローオフ勾配"),
-                ("Pull-down floor", "引き下げ下限"),
-                ("Gain 1.00 + blow-off 1.00 + ratio 1.00 = exactly the game.",
-                    "ゲイン 1.00 + ブローオフ 1.00 + 比率 1.00 = ゲームと完全一致。"),
-                ("Pull-down floor 0 = the game's clamp: the damper never pulls the body down.",
-                    "引き下げ下限 0 = ゲームのクランプ：ダンパーがボディを下へ引くことはありません。"),
-                ("Pull-down floor {0}: the damper may pull the body down by up to that fraction of the wheel's static load.",
-                    "引き下げ下限 {0}：ダンパーはボディを“そのホイールの静的荷重 × {0}”まで下へ引けます。"),
-                ("Raise it only if rebound feels like it runs out near full extension.",
-                    "伸び切る手前で伸張が効かないと感じたときだけ上げてください。"),
-                ("Grounded wheels (each row is one physics step, live):", "接地中のホイール（各行が 1 物理ステップ、ライブ）:"),
-                ("  wheel              comp     C Ns/m   dir  v m/s    damper N    game N   spring N",
-                    "  ホイール           圧縮   C Ns/m   方向  v m/s   ダンパー N   ゲーム N   スプリング N"),
-                ("bump", "圧縮"),
-                ("reb", "伸張"),
-                ("  (no grounded wheels)", "  （接地しているホイールはありません）"));
+            Logger.LogInfo(
+                $"[{PluginInfo.Name}] version {PluginInfo.Version} loaded " +
+                $"(damper: {DamperModels.Current?.Name ?? "none"}, " +
+                $"tyre vertical: {TireVerticalModels.Current?.Name ?? "none"}).");
         }
 
         private void Init(string what, Action action)
@@ -172,28 +160,96 @@ namespace ScrewTweaks.Physics.Suspension
             }
         }
 
+        /// <summary>Panel strings. Model names and units are identifiers and stay as they are.</summary>
+        private static void Localize()
+        {
+            // Keyed off the models' own Description values, so a translation can never drift away from
+            // the string it is meant to translate.
+            string nativeDamper = new NativeDamperModel().Description;
+            string digressive = new DigressiveDamper().Description;
+            string nativeVertical = new NativeTireVerticalModel().Description;
+            string linear = new LinearTireModel().Description;
+
+            Loc.Add(PanelLanguage.ChineseSimplified,
+                ("Suspension", "悬挂"),
+                ("Damper model: {0}", "阻尼模型：{0}"),
+                ("Tyre vertical model: {0}", "轮胎垂向模型：{0}"),
+                (nativeDamper, "游戏自带的阻尼，未改动：力 = 系数 × |速度|，压缩与回弹用同一个系数，没有卸压。"),
+                (digressive, "压缩/回弹分离 + 卸压曲线。慢速时更硬、冲击时更软，所以车身受控而路缘石不颠。把滑条调回去即可复刻游戏的线性阻尼。"),
+                (nativeVertical, "游戏自带的轮子：没有垂向自由度，每帧被贴到地面上，所以轮胎什么都吸收不了，轮子本身也没有质量。"),
+                (linear, "有垂向弹性的轮胎：对地面是一个线性弹簧加阻尼器，轮子以零件自身质量悬在悬挂上方。轮子从此可以跟随路面、也可以离地，尖锐载荷被轮胎吸收而不是直接传给车身。"),
+                ("Rebound / bump", "回弹 / 压缩"),
+                ("Low-speed gain", "低速增益"),
+                ("Knee velocity", "拐点速度"),
+                ("Blow-off slope", "卸压斜率"),
+                ("Pull-down floor", "下拉下限"),
+                ("Frequency", "固有频率"),
+                ("Damping ratio", "阻尼比"),
+                ("Mass scale", "质量倍率"),
+                ("Substeps", "子步数"),
+                ("Gain 1.00 + blow-off 1.00 + ratio 1.00 = exactly the game.",
+                    "增益 1.00 + 卸压 1.00 + 比例 1.00 = 完全等于原版。"),
+                ("Pull-down floor 0 = the game's clamp: the damper never pulls the body down.",
+                    "下拉下限 0 = 游戏的钳位：阻尼永远不会把车身往下拉。"),
+                ("Pull-down floor {0}: the damper may pull the body down by up to that fraction of the wheel's static load.",
+                    "下拉下限 {0}：阻尼最多可以把车身往下拉到“该轮静态载荷 × {0}”。"),
+                ("Raise it only if rebound feels like it runs out near full extension.",
+                    "只有在感觉“回弹快伸到底时没劲”时才需要调高它。"),
+                ("Frequency sets the tyre stiffness, not the other way round; raise Substeps if the panel reports more than you asked for.",
+                    "是频率决定轮胎刚度，不是反过来；如果面板显示的子步数比你设的多，说明它自动加过了。"),
+                ("Grounded wheels (each row is one physics step, live):", "接地轮（每行是一个物理步，实时）："),
+                ("  wheel              comp     C Ns/m   dir  v m/s    damper N    game N   spring N",
+                    "  轮子               压缩   C Ns/m   方向  v m/s     阻尼 N     原版 N    弹簧 N"),
+                ("    damper {0} N (game {1} N)   spring {2} N   tyre {3} mm / {4} N   sub {5}",
+                    "    阻尼 {0} N（原版 {1} N）   弹簧 {2} N   轮胎 {3} mm / {4} N   子步 {5}"),
+                ("bump", "压缩"),
+                ("reb", "回弹"),
+                ("  (no grounded wheels)", "  （没有接地的轮子）"));
+
+            Loc.Add(PanelLanguage.Japanese,
+                ("Suspension", "サスペンション"),
+                ("Damper model: {0}", "ダンパーモデル: {0}"),
+                ("Tyre vertical model: {0}", "タイヤ上下モデル: {0}"),
+                (nativeDamper, "ゲーム標準のダンパーそのまま：力 = 係数 × |速度|。圧縮と伸張で同じ係数、ブローオフなし。"),
+                (digressive, "圧縮／伸張の分離 + ブローオフ曲線。低速では硬く、鋭い入力では軟らかく。ボディを制御しつつ縁石が突き上げません。スライダーを戻せばゲームの線形ダンパーを再現できます。"),
+                (nativeVertical, "ゲーム標準のホイール：上下の自由度がなく、毎ステップ地面に貼り付けられます。タイヤは何も吸収できず、ホイール自体にも質量がありません。"),
+                (linear, "上下に撓むタイヤ：地面に対して線形のばねとダンパー、その上にホイールがパーツ自身の質量で吊られます。ホイールが路面に追従し、離れることもできるようになり、鋭い荷重はシャシーではなくタイヤが吸収します。"),
+                ("Rebound / bump", "伸張 / 圧縮"),
+                ("Low-speed gain", "低速ゲイン"),
+                ("Knee velocity", "ニー速度"),
+                ("Blow-off slope", "ブローオフ勾配"),
+                ("Pull-down floor", "引き下げ下限"),
+                ("Frequency", "固有振動数"),
+                ("Damping ratio", "減衰比"),
+                ("Mass scale", "質量倍率"),
+                ("Substeps", "サブステップ"),
+                ("Gain 1.00 + blow-off 1.00 + ratio 1.00 = exactly the game.",
+                    "ゲイン 1.00 + ブローオフ 1.00 + 比率 1.00 = ゲームと完全一致。"),
+                ("Pull-down floor 0 = the game's clamp: the damper never pulls the body down.",
+                    "引き下げ下限 0 = ゲームのクランプ：ダンパーがボディを下へ引くことはありません。"),
+                ("Pull-down floor {0}: the damper may pull the body down by up to that fraction of the wheel's static load.",
+                    "引き下げ下限 {0}：ダンパーはボディを“そのホイールの静的荷重 × {0}”まで下へ引けます。"),
+                ("Raise it only if rebound feels like it runs out near full extension.",
+                    "伸び切る手前で伸張が効かないと感じたときだけ上げてください。"),
+                ("Frequency sets the tyre stiffness, not the other way round; raise Substeps if the panel reports more than you asked for.",
+                    "剛性を決めるのは周波数のほうです。パネルのサブステップ数が設定より多い場合、自動で引き上げられています。"),
+                ("Grounded wheels (each row is one physics step, live):", "接地中のホイール（各行が 1 物理ステップ、ライブ）:"),
+                ("  wheel              comp     C Ns/m   dir  v m/s    damper N    game N   spring N",
+                    "  ホイール           圧縮   C Ns/m   方向  v m/s   ダンパー N   ゲーム N   スプリング N"),
+                ("    damper {0} N (game {1} N)   spring {2} N   tyre {3} mm / {4} N   sub {5}",
+                    "    ダンパー {0} N（ゲーム {1} N）   スプリング {2} N   タイヤ {3} mm / {4} N   サブ {5}"),
+                ("bump", "圧縮"),
+                ("reb", "伸張"),
+                ("  (no grounded wheels)", "  （接地しているホイールはありません）"));
+        }
+
         private void DrawSection()
         {
-            var current = DamperModels.Current;
-            GUILayout.Label(Loc.Tf("Damper model: {0}", current?.Name ?? "-"));
-            if (current != null) GUILayout.Label(Loc.T(current.Description));
-
-            GUILayout.Space(6f);
-            if (GUILayout.Button($"{current?.Name ?? "-"} ▼", GUILayout.Width(240f)))
-                _open = !_open;
-
-            if (_open)
-            {
-                foreach (var model in DamperModels.All)
-                {
-                    string text = model == current ? $"● {model.Name}" : $"     {model.Name}";
-                    if (GUILayout.Button(text, GUILayout.Width(236f)))
-                    {
-                        DamperModels.Select(model);
-                        _open = false;
-                    }
-                }
-            }
+            DrawModelPicker(
+                Loc.Tf("Damper model: {0}", DamperModels.Current?.Name ?? "-"),
+                DamperModels.Current?.Description,
+                DamperModels.All, DamperModels.Current, ref _damperOpen,
+                m => DamperModels.Select(m), m => m.Name);
 
             if (!DamperModels.IsNative)
             {
@@ -213,8 +269,53 @@ namespace ScrewTweaks.Physics.Suspension
                 GUILayout.Label(Loc.T("Raise it only if rebound feels like it runs out near full extension."));
             }
 
-            GUILayout.Space(12f);
+            GUILayout.Space(16f);
+            DrawVertical();
+
+            GUILayout.Space(14f);
             DrawWheels();
+        }
+
+        private void DrawVertical()
+        {
+            DrawModelPicker(
+                Loc.Tf("Tyre vertical model: {0}", TireVerticalModels.Current?.Name ?? "-"),
+                TireVerticalModels.Current?.Description,
+                TireVerticalModels.All, TireVerticalModels.Current, ref _verticalOpen,
+                m => TireVerticalModels.Select(m), m => m.Name);
+
+            if (TireVerticalModels.IsNative) return;
+
+            GUILayout.Space(10f);
+            DrawSlider(Loc.T("Frequency"), TireVerticalTuning.FrequencyConfig, 4f, 30f, "0.0");
+            DrawSlider(Loc.T("Damping ratio"), TireVerticalTuning.DampingRatioConfig, 0f, 0.4f, "0.00");
+            DrawSlider(Loc.T("Mass scale"), TireVerticalTuning.MassScaleConfig, 0.2f, 4f, "0.00");
+            DrawSliderInt(Loc.T("Substeps"), TireVerticalTuning.SubstepsConfig, 1, TireVerticalTuning.MaxSubsteps);
+
+            GUILayout.Space(6f);
+            GUILayout.Label(Summary());
+            GUILayout.Label(Loc.T("Frequency sets the tyre stiffness, not the other way round; raise Substeps if the panel reports more than you asked for."));
+        }
+
+        /// <summary>
+        /// What the settings actually turn into on a wheel of the current car, so the frequency ->
+        /// stiffness relationship is visible instead of implied.
+        /// </summary>
+        private string Summary()
+        {
+            float mass = 20f;
+            foreach (var wc in _wheels)
+            {
+                if (wc?.wheel == null || wc.wheel.mass <= 0f) continue;
+                mass = wc.wheel.mass * TireVerticalTuning.MassScale;
+                break;
+            }
+
+            float dt = Time.fixedDeltaTime;
+            return $"{TireVerticalTuning.Frequency:0.0} Hz on a {mass:0.0} kg wheel: " +
+                   $"{TireVerticalTuning.Stiffness(mass) / 1000f:0.0} kN/m, " +
+                   $"{TireVerticalTuning.Damping(mass):0} Ns/m, " +
+                   $"{TireVerticalTuning.SubstepsFor(dt)} substeps at dt {dt:0.000} s";
         }
 
         private void DrawWheels()
@@ -240,6 +341,18 @@ namespace ScrewTweaks.Physics.Suspension
                         $"  {Label(wc),-16} {spring.compressionPercent * 100f,4:F0}%  {damper.bumpForce,8:F0}  " +
                         $"{Loc.T(bump ? "bump" : "reb"),-4} {spring.velocity,7:F2}  {damper.force,9:F0}  " +
                         $"{game,8:F0}  {spring.force,8:F0}");
+
+                    var vertical = WheelVerticalSlot.Describe(wc);
+                    GUILayout.Label(vertical.HasValue
+                        ? Loc.Tf("    damper {0} N (game {1} N)   spring {2} N   tyre {3} mm / {4} N   sub {5}",
+                            damper.force.ToString("0"), game.ToString("0"), spring.force.ToString("0"),
+                            (vertical.Value.Deflection * 1000f).ToString("0.0"),
+                            vertical.Value.TireForce.ToString("0"),
+                            vertical.Value.Substeps.ToString())
+                        : Loc.Tf("    damper {0} N (game {1} N)   spring {2} N   tyre {3} mm / {4} N   sub {5}",
+                            damper.force.ToString("0"), game.ToString("0"), spring.force.ToString("0"),
+                            "-", "-", "-"));
+
                     shown++;
                     if (shown >= 12) break;
                 }
@@ -250,6 +363,29 @@ namespace ScrewTweaks.Physics.Suspension
             }
 
             if (shown == 0) GUILayout.Label(Loc.T("  (no grounded wheels)"));
+        }
+
+        private static void DrawModelPicker<T>(string heading, string? description, System.Collections.Generic.IReadOnlyList<T> all,
+            T? current, ref bool open, Action<T> select, Func<T, string> name)
+            where T : class
+        {
+            GUILayout.Label(heading);
+            if (description != null) GUILayout.Label(Loc.T(description));
+
+            GUILayout.Space(6f);
+            if (GUILayout.Button($"{name(current!)} ▼", GUILayout.Width(240f)))
+                open = !open;
+
+            if (!open) return;
+
+            foreach (var item in all)
+            {
+                bool isCurrent = ReferenceEquals(item, current);
+                string text = isCurrent ? $"● {name(item)}" : $"     {name(item)}";
+                if (!GUILayout.Button(text, GUILayout.Width(236f))) continue;
+                select(item);
+                open = false;
+            }
         }
 
         private static string Label(WheelController wc)
@@ -267,6 +403,17 @@ namespace ScrewTweaks.Physics.Suspension
             float value = GUILayout.HorizontalSlider(entry.Value, min, max, GUILayout.Width(120f));
             GUILayout.EndHorizontal();
             if (!Mathf.Approximately(value, entry.Value))
+                entry.Value = value;
+        }
+
+        private static void DrawSliderInt(string label, ConfigEntry<int>? entry, int min, int max)
+        {
+            if (entry == null) return;
+            GUILayout.BeginHorizontal();
+            GUILayout.Label($"{label}: {entry.Value}", GUILayout.Width(190f));
+            int value = Mathf.RoundToInt(GUILayout.HorizontalSlider(entry.Value, min, max, GUILayout.Width(120f)));
+            GUILayout.EndHorizontal();
+            if (value != entry.Value)
                 entry.Value = value;
         }
     }

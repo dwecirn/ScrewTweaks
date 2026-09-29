@@ -38,6 +38,11 @@ namespace ScrewTweaks.Physics.Suspension
         [HarmonyPatch(typeof(WheelController), "SuspensionUpdate")]
         internal static void SuspensionUpdatePostfix(WheelController __instance)
         {
+            // With a vertical model selected, WheelVerticalSlot replaces SuspensionUpdate and evaluates
+            // the damper itself inside its substeps. This postfix should not even run then (a prefix
+            // returning false skips postfixes), but saying so here keeps it true if that ever changes.
+            if (!TireVerticalModels.IsNative) return;
+
             var model = DamperModels.Current;
             if (model == null || model is NativeDamperModel) return;
 
@@ -70,7 +75,7 @@ namespace ScrewTweaks.Physics.Suspension
             damper.force = compressing ? force : -force;
 
             float applied = Mathf.Clamp(spring.force + gameDamperForce, 0f, float.PositiveInfinity);
-            float wanted = Mathf.Clamp(spring.force + damper.force, -Floor(wc), float.PositiveInfinity);
+            float wanted = Mathf.Clamp(spring.force + damper.force, -ReboundFloorFor(wc), float.PositiveInfinity);
             float delta = wanted - applied;
             if (Mathf.Abs(delta) < 0.01f) return;
 
@@ -87,7 +92,7 @@ namespace ScrewTweaks.Physics.Suspension
         /// How far below zero the total suspension force may go, in [N]. 0 is the game's own clamp, which
         /// stops the damper from ever pulling the body down.
         /// </summary>
-        private static float Floor(WheelController wc)
+        internal static float ReboundFloorFor(WheelController wc)
         {
             float fraction = DamperTuning.ReboundFloor;
             if (fraction <= 0f) return 0f;

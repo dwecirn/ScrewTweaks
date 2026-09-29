@@ -126,7 +126,7 @@ content column takes the rest of the width. Each feature plugin registers a titl
 
 - **ECU** — ABS and traction channels
 - **Tires** — tire model selection, tuning, live per-wheel telemetry
-- **Suspension** — damper model selection, tuning, live per-wheel travel and force
+- **Suspension** — damper and tyre vertical model selection, tuning, live per-wheel travel and force
 - **Auto Shift** — on/off for the faster shift timing
 - **Settings** — the panel's own settings, always last
 
@@ -232,6 +232,36 @@ authority exactly when the suspension is near full extension — which is when i
 crest. Since the wheel has no vertical freedom in this engine, the damper is the only thing that can
 stand in for the wheel's inertia. `0` keeps the game's clamp. It is off by default because it changes the
 game's integrator rather than just the damper law.
+
+#### The wheel's vertical freedom
+
+The other gap is larger. The game's wheel has **no vertical freedom at all**: `SuspensionUpdate` reads the
+ground out of the raycast and assigns the suspension length so the tire sits exactly on it, which makes
+the tire rigid and gives the wheel no mass of its own. That is why kerbs, expansion joints and landings
+are pure impulses, and why only the damper can absorb anything.
+
+`TireVertical/Model = Linear` gives the wheel a vertical degree of freedom: the tire becomes a spring and
+damper against the ground, with the wheel hanging on the suspension above it. The tyre stiffness is not a
+number in N/m — it is derived from a **target unsprung frequency**, so a heavy car with a big wheel gets a
+stiff tyre and a go-kart a soft one, and every wheel ends up equally far from the integration's stability
+limit. Real cars sit around 10–15 Hz.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `TireVertical/Model` | `Native` | `Native` = the game's rigid wheel. `Linear` = the spring-and-damper tyre |
+| `TireVertical/Frequency` | `13.0` | Target unsprung natural frequency [Hz]. This is what sets the tyre stiffness |
+| `TireVertical/DampingRatio` | `0.07` | Tyre vertical damping as a fraction of critical |
+| `TireVertical/MassScale` | `1.00` | Multiplier on the wheel part's mass, which is the unsprung mass |
+| `TireVertical/Substeps` | `4` | Requested substeps; raised automatically when the frequency and step size need more |
+
+With it on, the wheels follow the road and can leave it, and sharp loads are absorbed by the tyre instead
+of being passed straight to the chassis. The panel prints the stiffness, damping and substep count it
+actually arrived at for the current car, so the frequency-to-stiffness relationship is visible rather
+than implied.
+
+`docs/suspension-model-spec.md` §4.1 explains why the substep count is derived from the frequency rather
+than taken from the setting: at a 0.02 s physics step a real tyre's unsprung mode is fast enough that a
+light wheel would integrate unstably, and giving every wheel the same frequency is what removes that.
 
 ### ECU
 
@@ -366,7 +396,10 @@ public sealed class MyTire : ITireModel
 TireModels.Register(new MyTire());
 ```
 
-### 3. A damper model
+### 3. A damper or tyre model
+
+Two slots here, on the same patch point: `IDamperModel` for the damper's force law, and
+`ITireVerticalModel` for the tyre's vertical force once the wheel has a degree of freedom of its own.
 
 Implement `IDamperModel` and register it. It shows up in the **Suspension** dropdown immediately.
 
@@ -402,6 +435,34 @@ DamperModels.Register(new MyDamper());
 Called once per grounded wheel per physics step, *after* the game has done the hit test and the geometry
 but *before* the force is applied — so the tyre load, the chassis force and the bump sound all see your
 number. Put a `0` in `GameCoefficient` (tank tracks) and a model scaled off it is a no-op there.
+
+`ITireVerticalModel` is the other half: it is only consulted while `TireVertical/Model` is not `Native`,
+and it is called once per **substep** rather than once per step.
+
+```csharp
+using ScrewTweaks.Physics.Suspension;
+using UnityEngine;
+
+public sealed class MyTyre : ITireVerticalModel
+{
+    public string Name => "MyTyre";
+    public string Description => "Example: a tyre that stiffens as it is pressed in.";
+
+    // Return the upward force the ground pushes the wheel with, in [N], never negative.
+    public float Evaluate(in TireVerticalState s)
+    {
+        // s.Deflection         - how far into the ground the tyre is pressed [m]; negative in the air
+        // s.DeflectionRate     - relative rate between wheel and ground [m/s]
+        // s.UnsprungMass       - the wheel's own mass [kg]
+        // s.ReferenceStiffness - the host's linear value for this wheel, a useful scale to work from
+        float d = Mathf.Max(s.Deflection, 0f);
+        return s.ReferenceStiffness * d * (1f + d * 20f);   // progressive
+    }
+}
+
+// in Start():
+TireVerticalModels.Register(new MyTyre());
+```
 
 ### 4. An ABS or traction algorithm
 

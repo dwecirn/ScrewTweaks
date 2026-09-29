@@ -107,7 +107,7 @@ dotnet build ScrewTweaks.sln --no-restore -m:1 -t:ListVersions
 
 - **ECU** —— ABS 与牵引力通道
 - **Tires** —— 轮胎模型选择、调参、每轮实时遥测
-- **Suspension** —— 阻尼模型选择、调参、每轮行程与受力实时显示
+- **Suspension** —— 阻尼与轮胎垂向模型选择、调参、每轮行程与受力实时显示
 - **Auto Shift** —— 更快换挡时序的开关
 - **Settings** —— 面板自身的设置，永远在最后
 
@@ -190,6 +190,24 @@ PartWheelDirt2 g= 0.30  BCDE=(  7.0, 1.10, 0.83, 1.00)  k= 0.021/ 0.000 a=  -4.1
 `damper N` 是模型算出来的，`game N` 是同一速度下游戏原本会算出的值——差值在开车过程中直接看得见。
 
 **`ReboundFloor` 需要解释一下。** 游戏把悬挂合力钳在 0，所以回弹力一旦大于弹簧力就被截成 0，阻尼永远无法把车身往下拉。这防止了车被吸进地面，但也意味着**悬挂接近全伸张时回弹阻尼恰好失效**——而过波峰时正需要它。这个引擎里轮子没有垂向自由度，阻尼是唯一能代替轮子惯性的东西。`0` 就是游戏原本的钳位；默认关闭，因为它改的是游戏的积分器，而不只是阻尼规律。
+
+#### 轮子的垂向自由度
+
+另一个缺口更大。游戏的轮子**根本没有垂向自由度**：`SuspensionUpdate` 从射线读出地面，然后把悬挂长度直接赋成"让轮胎正好贴地"的值，于是轮胎是刚性的、轮子本身没有质量。这就是为什么路缘石、伸缩缝和落地都是纯冲量，也是为什么只有阻尼能吸收东西。
+
+`TireVertical/Model = Linear` 给轮子一个垂向自由度：轮胎对地面变成弹簧加阻尼器，轮子以自身质量悬在悬挂上方。轮胎刚度**不是一个 N/m 的常数**，而是由**目标非簧载频率**反推——所以重型车配大轮子会得到硬轮胎、卡丁车得到软轮胎，而且每个轮子距离积分稳定边界同样远。真实车大约在 10~15 Hz。
+
+| 设置 | 默认 | 含义 |
+|---|---|---|
+| `TireVertical/Model` | `Native` | `Native` = 游戏自带的刚性轮子。`Linear` = 弹簧+阻尼器轮胎 |
+| `TireVertical/Frequency` | `13.0` | 目标非簧载固有频率 [Hz]，由它决定轮胎刚度 |
+| `TireVertical/DampingRatio` | `0.07` | 轮胎垂向阻尼，相对临界阻尼的比例 |
+| `TireVertical/MassScale` | `1.00` | 轮子零件质量的倍率，也就是非簧载质量 |
+| `TireVertical/Substeps` | `4` | 请求的子步数；频率和步长需要时会被自动提高 |
+
+打开之后轮子会跟随路面、也会离地，尖锐载荷被轮胎吸收而不是直接传给车身。面板会打印当前这辆车**实际算出的**刚度、阻尼和子步数——频率到刚度的换算过程是看得见的，不是隐含的。
+
+为什么子步数由频率反推、而不是直接听设置的，见 `docs/suspension-model-spec.md` §4.1：0.02 秒的物理步长下，真实轮胎的非簧载模态快到会让轻轮子积分发散，而"让每个轮子频率相同"正是消除这件事的办法。
 
 ### ECU
 
@@ -309,7 +327,9 @@ public sealed class MyTire : ITireModel
 TireModels.Register(new MyTire());
 ```
 
-### 3. 阻尼模型
+### 3. 阻尼或轮胎模型
+
+这里有两个扩展点，落在同一处接缝上：`IDamperModel` 管阻尼的力规律，`ITireVerticalModel` 管轮子有了垂向自由度之后轮胎的垂向力。
 
 实现 `IDamperModel` 并注册，它会立刻出现在 **Suspension** 下拉里。
 
@@ -341,6 +361,33 @@ DamperModels.Register(new MyDamper());
 ```
 
 每个物理步、每个接地轮调用一次，在游戏做完碰撞检测和几何之后、力真正施加之前——所以轮胎载荷、车身受力和减震器音效拿到的都是你的数值。系数为 `0` 的地方（坦克履带轮）以它为基础缩放的模型自然无效果。
+
+`ITireVerticalModel` 是另一半：只有在 `TireVertical/Model` 不是 `Native` 时才会被调用，而且调用频率是每个**子步**一次，不是每个物理步一次。
+
+```csharp
+using ScrewTweaks.Physics.Suspension;
+using UnityEngine;
+
+public sealed class MyTyre : ITireVerticalModel
+{
+    public string Name => "MyTyre";
+    public string Description => "例子：越压越硬的轮胎。";
+
+    // 返回地面把轮子往上顶的力 [N]，永远非负。
+    public float Evaluate(in TireVerticalState s)
+    {
+        // s.Deflection         - 轮胎压入地面多少 [m]，离地时为负
+        // s.DeflectionRate     - 轮子与地面的相对速度 [m/s]
+        // s.UnsprungMass       - 轮子自身质量 [kg]
+        // s.ReferenceStiffness - 宿主为这个轮子算出的线性刚度，适合当基准
+        float d = Mathf.Max(s.Deflection, 0f);
+        return s.ReferenceStiffness * d * (1f + d * 20f);   // 渐进式
+    }
+}
+
+// 在 Start() 里：
+TireVerticalModels.Register(new MyTyre());
+```
 
 ### 4. ABS / 牵引力算法
 
