@@ -44,7 +44,9 @@ namespace ScrewTweaks.Physics.Suspension
                 "Native",
                 "Tyre vertical model. Native = the game's own wheel: rigid in the vertical, snapped to the " +
                 "ground every step, no unsprung mass. Linear = the tyre becomes a spring and damper against " +
-                "the ground and the wheel hang on the suspension above it.");
+                "the ground and the wheel hang on the suspension above it. The stiffness and damping are " +
+                "derived from the wheel part's mass and the suspension part's wheel rate; they are not " +
+                "settings.");
 
             DamperTuning.ReboundRatioConfig = Config.Bind(
                 "Damper",
@@ -83,38 +85,6 @@ namespace ScrewTweaks.Physics.Suspension
                 "1 = up to about 1 g of downward pull. Anything above 1 risks dragging the chassis " +
                 "into the terrain on a crest.");
 
-            TireVerticalTuning.FrequencyConfig = Config.Bind(
-                "TireVertical",
-                "Frequency",
-                13.0f,
-                "Target unsprung natural frequency in [Hz]. This, not a number in N/m, is what sets the " +
-                "tyre stiffness: a heavy car with a big wheel gets a stiff tyre and a go-kart a soft one, " +
-                "and every wheel ends up equally far from the integration's stability limit. Real cars " +
-                "are around 10 to 15.");
-
-            TireVerticalTuning.DampingRatioConfig = Config.Bind(
-                "TireVertical",
-                "DampingRatio",
-                0.07f,
-                "Tyre vertical damping as a fraction of critical. Real tyres sit around 0.05 to 0.1.");
-
-            TireVerticalTuning.MassScaleConfig = Config.Bind(
-                "TireVertical",
-                "MassScale",
-                1.0f,
-                "Multiplier on the wheel part's own mass, which is the unsprung mass. The game only ever " +
-                "used that number for rotational inertia; a real corner also carries the hub and half the " +
-                "suspension arms, so this is where that goes.");
-
-            TireVerticalTuning.SubstepsConfig = Config.Bind(
-                "TireVertical",
-                "Substeps",
-                4,
-                new ConfigDescription(
-                    "Substeps per physics step for the wheel's vertical integration. The host raises this " +
-                    "automatically when the frequency and the step size need more, so this can only ask " +
-                    "for extra work, never for an unstable step.",
-                    new AcceptableValueRange<int>(1, TireVerticalTuning.MaxSubsteps)));
         }
 
         private void Start()
@@ -183,10 +153,8 @@ namespace ScrewTweaks.Physics.Suspension
                 ("Knee velocity", "拐点速度"),
                 ("Blow-off slope", "卸压斜率"),
                 ("Pull-down floor", "下拉下限"),
-                ("Frequency", "固有频率"),
-                ("Damping ratio", "阻尼比"),
-                ("Mass scale", "质量倍率"),
-                ("Substeps", "子步数"),
+                ("Stiffness and damping are derived from the wheel part's mass and the suspension part's wheel rate. There is nothing to set.",
+                    "刚度和阻尼由轮子零件的质量与悬挂零件的轮速（wheel rate）推导，没有可调项。"),
                 ("Gain 1.00 + blow-off 1.00 + ratio 1.00 = exactly the game.",
                     "增益 1.00 + 卸压 1.00 + 比例 1.00 = 完全等于原版。"),
                 ("Pull-down floor 0 = the game's clamp: the damper never pulls the body down.",
@@ -195,13 +163,11 @@ namespace ScrewTweaks.Physics.Suspension
                     "下拉下限 {0}：阻尼最多可以把车身往下拉到“该轮静态载荷 × {0}”。"),
                 ("Raise it only if rebound feels like it runs out near full extension.",
                     "只有在感觉“回弹快伸到底时没劲”时才需要调高它。"),
-                ("Frequency sets the tyre stiffness, not the other way round; raise Substeps if the panel reports more than you asked for.",
-                    "是频率决定轮胎刚度，不是反过来；如果面板显示的子步数比你设的多，说明它自动加过了。"),
                 ("Grounded wheels (each row is one physics step, live):", "接地轮（每行是一个物理步，实时）："),
                 ("  wheel              comp     C Ns/m   dir  v m/s    damper N    game N   spring N",
                     "  轮子               压缩   C Ns/m   方向  v m/s     阻尼 N     原版 N    弹簧 N"),
-                ("    damper {0} N (game {1} N)   spring {2} N   tyre {3} mm / {4} N   sub {5}",
-                    "    阻尼 {0} N（原版 {1} N）   弹簧 {2} N   轮胎 {3} mm / {4} N   子步 {5}"),
+                ("    damper {0} N (game {1})   spring {2} N   tyre {3} mm / {4} N   hop {5} Hz   sub {6}",
+                    "    阻尼 {0} N（原版 {1}）   弹簧 {2} N   轮胎 {3} mm / {4} N   跳动 {5} Hz   子步 {6}"),
                 ("bump", "压缩"),
                 ("reb", "回弹"),
                 ("  (no grounded wheels)", "  （没有接地的轮子）"));
@@ -219,10 +185,8 @@ namespace ScrewTweaks.Physics.Suspension
                 ("Knee velocity", "ニー速度"),
                 ("Blow-off slope", "ブローオフ勾配"),
                 ("Pull-down floor", "引き下げ下限"),
-                ("Frequency", "固有振動数"),
-                ("Damping ratio", "減衰比"),
-                ("Mass scale", "質量倍率"),
-                ("Substeps", "サブステップ"),
+                ("Stiffness and damping are derived from the wheel part's mass and the suspension part's wheel rate. There is nothing to set.",
+                    "剛性と減衰はホイールパーツの質量とサスペンションパーツのホイールレートから導出されます。設定項目はありません。"),
                 ("Gain 1.00 + blow-off 1.00 + ratio 1.00 = exactly the game.",
                     "ゲイン 1.00 + ブローオフ 1.00 + 比率 1.00 = ゲームと完全一致。"),
                 ("Pull-down floor 0 = the game's clamp: the damper never pulls the body down.",
@@ -231,13 +195,11 @@ namespace ScrewTweaks.Physics.Suspension
                     "引き下げ下限 {0}：ダンパーはボディを“そのホイールの静的荷重 × {0}”まで下へ引けます。"),
                 ("Raise it only if rebound feels like it runs out near full extension.",
                     "伸び切る手前で伸張が効かないと感じたときだけ上げてください。"),
-                ("Frequency sets the tyre stiffness, not the other way round; raise Substeps if the panel reports more than you asked for.",
-                    "剛性を決めるのは周波数のほうです。パネルのサブステップ数が設定より多い場合、自動で引き上げられています。"),
                 ("Grounded wheels (each row is one physics step, live):", "接地中のホイール（各行が 1 物理ステップ、ライブ）:"),
                 ("  wheel              comp     C Ns/m   dir  v m/s    damper N    game N   spring N",
                     "  ホイール           圧縮   C Ns/m   方向  v m/s   ダンパー N   ゲーム N   スプリング N"),
-                ("    damper {0} N (game {1} N)   spring {2} N   tyre {3} mm / {4} N   sub {5}",
-                    "    ダンパー {0} N（ゲーム {1} N）   スプリング {2} N   タイヤ {3} mm / {4} N   サブ {5}"),
+                ("    damper {0} N (game {1})   spring {2} N   tyre {3} mm / {4} N   hop {5} Hz   sub {6}",
+                    "    ダンパー {0} N（ゲーム {1}）   スプリング {2} N   タイヤ {3} mm / {4} N   ホップ {5} Hz   サブ {6}"),
                 ("bump", "圧縮"),
                 ("reb", "伸張"),
                 ("  (no grounded wheels)", "  （接地しているホイールはありません）"));
@@ -286,36 +248,8 @@ namespace ScrewTweaks.Physics.Suspension
 
             if (TireVerticalModels.IsNative) return;
 
-            GUILayout.Space(10f);
-            DrawSlider(Loc.T("Frequency"), TireVerticalTuning.FrequencyConfig, 4f, 30f, "0.0");
-            DrawSlider(Loc.T("Damping ratio"), TireVerticalTuning.DampingRatioConfig, 0f, 0.4f, "0.00");
-            DrawSlider(Loc.T("Mass scale"), TireVerticalTuning.MassScaleConfig, 0.2f, 4f, "0.00");
-            DrawSliderInt(Loc.T("Substeps"), TireVerticalTuning.SubstepsConfig, 1, TireVerticalTuning.MaxSubsteps);
-
             GUILayout.Space(6f);
-            GUILayout.Label(Summary());
-            GUILayout.Label(Loc.T("Frequency sets the tyre stiffness, not the other way round; raise Substeps if the panel reports more than you asked for."));
-        }
-
-        /// <summary>
-        /// What the settings actually turn into on a wheel of the current car, so the frequency ->
-        /// stiffness relationship is visible instead of implied.
-        /// </summary>
-        private string Summary()
-        {
-            float mass = 20f;
-            foreach (var wc in _wheels)
-            {
-                if (wc?.wheel == null || wc.wheel.mass <= 0f) continue;
-                mass = wc.wheel.mass * TireVerticalTuning.MassScale;
-                break;
-            }
-
-            float dt = Time.fixedDeltaTime;
-            return $"{TireVerticalTuning.Frequency:0.0} Hz on a {mass:0.0} kg wheel: " +
-                   $"{TireVerticalTuning.Stiffness(mass) / 1000f:0.0} kN/m, " +
-                   $"{TireVerticalTuning.Damping(mass):0} Ns/m, " +
-                   $"{TireVerticalTuning.SubstepsFor(dt)} substeps at dt {dt:0.000} s";
+            GUILayout.Label(Loc.T("Stiffness and damping are derived from the wheel part's mass and the suspension part's wheel rate. There is nothing to set."));
         }
 
         private void DrawWheels()
@@ -343,15 +277,15 @@ namespace ScrewTweaks.Physics.Suspension
                         $"{game,8:F0}  {spring.force,8:F0}");
 
                     var vertical = WheelVerticalSlot.Describe(wc);
-                    GUILayout.Label(vertical.HasValue
-                        ? Loc.Tf("    damper {0} N (game {1} N)   spring {2} N   tyre {3} mm / {4} N   sub {5}",
-                            damper.force.ToString("0"), game.ToString("0"), spring.force.ToString("0"),
-                            (vertical.Value.Deflection * 1000f).ToString("0.0"),
-                            vertical.Value.TireForce.ToString("0"),
-                            vertical.Value.Substeps.ToString())
-                        : Loc.Tf("    damper {0} N (game {1} N)   spring {2} N   tyre {3} mm / {4} N   sub {5}",
-                            damper.force.ToString("0"), game.ToString("0"), spring.force.ToString("0"),
-                            "-", "-", "-"));
+                    GUILayout.Label(Loc.Tf(
+                        "    damper {0} N (game {1})   spring {2} N   tyre {3} mm / {4} N   hop {5} Hz   sub {6}",
+                        damper.force.ToString("0"),
+                        game.ToString("0"),
+                        spring.force.ToString("0"),
+                        vertical.HasValue ? (vertical.Value.Deflection * 1000f).ToString("0.0") : "-",
+                        vertical.HasValue ? vertical.Value.TireForce.ToString("0") : "-",
+                        vertical.HasValue ? vertical.Value.Frequency.ToString("0.0") : "-",
+                        vertical.HasValue ? vertical.Value.Substeps.ToString() : "-"));
 
                     shown++;
                     if (shown >= 12) break;
@@ -403,17 +337,6 @@ namespace ScrewTweaks.Physics.Suspension
             float value = GUILayout.HorizontalSlider(entry.Value, min, max, GUILayout.Width(120f));
             GUILayout.EndHorizontal();
             if (!Mathf.Approximately(value, entry.Value))
-                entry.Value = value;
-        }
-
-        private static void DrawSliderInt(string label, ConfigEntry<int>? entry, int min, int max)
-        {
-            if (entry == null) return;
-            GUILayout.BeginHorizontal();
-            GUILayout.Label($"{label}: {entry.Value}", GUILayout.Width(190f));
-            int value = Mathf.RoundToInt(GUILayout.HorizontalSlider(entry.Value, min, max, GUILayout.Width(120f)));
-            GUILayout.EndHorizontal();
-            if (value != entry.Value)
                 entry.Value = value;
         }
     }

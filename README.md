@@ -241,27 +241,29 @@ the tire rigid and gives the wheel no mass of its own. That is why kerbs, expans
 are pure impulses, and why only the damper can absorb anything.
 
 `TireVertical/Model = Linear` gives the wheel a vertical degree of freedom: the tire becomes a spring and
-damper against the ground, with the wheel hanging on the suspension above it. The tyre stiffness is not a
-number in N/m — it is derived from a **target unsprung frequency**, so a heavy car with a big wheel gets a
-stiff tyre and a go-kart a soft one, and every wheel ends up equally far from the integration's stability
-limit. Real cars sit around 10–15 Hz.
+damper against the ground, with the wheel hanging on the suspension above it.
+
+**Nothing else to set — the tyre's numbers are derived from the parts you already fitted:**
+
+- **Unsprung mass** — the wheel part's own mass, which the game otherwise only used for rotational
+  inertia.
+- **Tyre stiffness** — 6 × the suspension's wheel rate (`maxForce / maxLength`). Real cars put a tyre at 5
+  to 10 times the wheel rate, so a heavy car with long travel gets a soft big tyre and a go-kart a stiff
+  small one, with no car-specific constant anywhere.
+- **Tyre damping** — 0.2 of critical, in the middle of the measured range for tyres (0.1 to 0.3).
+- **Substep count** — computed from how fast the wheel hop is, so it cannot be made unstable.
+
+On the default car that comes out at about 200 kN/m on a 20 kg wheel: a 12 mm static deflection and a
+17 Hz wheel hop, both close to a real corner. The panel prints what each wheel actually ended up with.
 
 | Setting | Default | Meaning |
 |---|---|---|
 | `TireVertical/Model` | `Native` | `Native` = the game's rigid wheel. `Linear` = the spring-and-damper tyre |
-| `TireVertical/Frequency` | `13.0` | Target unsprung natural frequency [Hz]. This is what sets the tyre stiffness |
-| `TireVertical/DampingRatio` | `0.07` | Tyre vertical damping as a fraction of critical |
-| `TireVertical/MassScale` | `1.00` | Multiplier on the wheel part's mass, which is the unsprung mass |
-| `TireVertical/Substeps` | `4` | Requested substeps; raised automatically when the frequency and step size need more |
 
 With it on, the wheels follow the road and can leave it, and sharp loads are absorbed by the tyre instead
-of being passed straight to the chassis. The panel prints the stiffness, damping and substep count it
-actually arrived at for the current car, so the frequency-to-stiffness relationship is visible rather
-than implied.
-
-`docs/suspension-model-spec.md` §4.1 explains why the substep count is derived from the frequency rather
-than taken from the setting: at a 0.02 s physics step a real tyre's unsprung mode is fast enough that a
-light wheel would integrate unstably, and giving every wheel the same frequency is what removes that.
+of being passed straight to the chassis. `docs/suspension-model-spec.md` §5.5 has the reasoning —
+including why **tyre damping, not the damper, is what controls wheel hop**, which is the thing to revisit
+if hop is ever too visible again.
 
 ### ECU
 

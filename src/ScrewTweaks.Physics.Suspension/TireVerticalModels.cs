@@ -48,8 +48,8 @@ namespace ScrewTweaks.Physics.Suspension
         /// <summary>The tyre radius in [m].</summary>
         public float Radius => Wheel.wheel.radius;
 
-        /// <summary>The stiffness the host picked for this wheel from the target frequency, in [N/m].</summary>
-        public float ReferenceStiffness => TireVerticalTuning.Stiffness(UnsprungMass);
+        /// <summary>The stiffness the host derived for this wheel, in [N/m].</summary>
+        public float ReferenceStiffness => TireVerticalTuning.Stiffness(Wheel, UnsprungMass);
     }
 
     /// <summary>
@@ -103,8 +103,8 @@ namespace ScrewTweaks.Physics.Suspension
 
         public float Evaluate(in TireVerticalState state)
         {
-            float stiffness = TireVerticalTuning.Stiffness(state.UnsprungMass);
-            float damping = TireVerticalTuning.Damping(state.UnsprungMass);
+            float stiffness = TireVerticalTuning.Stiffness(state.Wheel, state.UnsprungMass);
+            float damping = TireVerticalTuning.Damping(state.Wheel, state.UnsprungMass);
 
             float force = stiffness * state.Deflection + damping * state.DeflectionRate;
             return force > 0f ? force : 0f; // a tyre pushes, it does not pull

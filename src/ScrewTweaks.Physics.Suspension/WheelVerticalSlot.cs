@@ -124,8 +124,8 @@ namespace ScrewTweaks.Physics.Suspension
             state.LastGroundLength = groundLength;
             state.HasLastGround = true;
 
-            float unsprungMass = Mathf.Max(wc.wheel.mass * TireVerticalTuning.MassScale, 0.5f);
-            int substeps = TireVerticalTuning.SubstepsFor(dt);
+            float unsprungMass = Mathf.Max(wc.wheel.mass, 0.5f);
+            int substeps = TireVerticalTuning.SubstepsFor(wc, unsprungMass, dt);
             float sub = dt / substeps;
             float gravityDown = Vector3.Dot(UnityEngine.Physics.gravity, -axis);
 
@@ -266,10 +266,12 @@ namespace ScrewTweaks.Physics.Suspension
         }
 
         /// <summary>Live values for the panel, or null when this wheel is not running the model.</summary>
-        internal static (float Length, float Deflection, float TireForce, int Substeps)? Describe(WheelController wc)
+        internal static (float Length, float Deflection, float TireForce, float Frequency, int Substeps)?
+            Describe(WheelController wc)
         {
             if (wc == null || !States.TryGetValue(wc, out var state) || !state.Ready) return null;
-            return (state.Length, state.Deflection, state.TireForce, state.Substeps);
+            return (state.Length, state.Deflection, state.TireForce,
+                TireVerticalTuning.Frequency(wc, Mathf.Max(wc.wheel.mass, 0.5f)), state.Substeps);
         }
     }
 }
