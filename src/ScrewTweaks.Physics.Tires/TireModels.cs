@@ -7,9 +7,13 @@ using UnityEngine;
 namespace ScrewTweaks.Physics.Tires
 {
     /// <summary>
-    /// A pluggable tyre force model. When <see cref="Apply"/> returns true the model has written
-    /// <c>forwardFriction.force</c> / <c>sideFriction.force</c> (and integrated wheel spin) and the
-    /// game's built-in <c>WheelController.FrictionUpdate</c> is skipped for this step.
+    /// A pluggable tyre force model. The host fills in the contact speeds
+    /// (<c>forwardFriction.speed</c> / <c>sideFriction.speed</c>) before calling <see cref="Apply"/>,
+    /// and afterwards publishes RPM / wheel-hit slip to the drivetrain.
+    ///
+    /// When <see cref="Apply"/> returns true the model has written <c>forwardFriction.force</c>,
+    /// <c>sideFriction.force</c>, both <c>slip</c> values and integrated <c>wheel.angularVelocity</c>;
+    /// the game's built-in <c>WheelController.FrictionUpdate</c> is then skipped for this step.
     /// </summary>
     public interface ITireModel
     {
@@ -35,6 +39,8 @@ namespace ScrewTweaks.Physics.Tires
         {
             wheel.forwardFriction.force = 0f;
             wheel.sideFriction.force = 0f;
+            wheel.forwardFriction.slip = 0f;
+            wheel.sideFriction.slip = 0f;
             return true;
         }
     }

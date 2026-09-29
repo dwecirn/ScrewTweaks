@@ -34,16 +34,9 @@ namespace ScrewTweaks.Physics.Tires
             float inertia = Mathf.Max(wheel.inertia, 1e-4f);
             float fz = Mathf.Max(wheel.load, 0f);
 
-            // --- contact velocity (same source as the native FrictionUpdate) ---
-            Vector3 vel = wc.ActiveRigidbody != null
-                ? wc.ActiveRigidbody.GetPointVelocity(wheel.worldPosition - wheel.up * radius)
-                : Vector3.zero;
-            var ground = wc.wheelHit.raycastHit.rigidbody;
-            if (ground != null)
-                vel -= ground.GetPointVelocity(wc.wheelHit.raycastHit.point);
-
-            float vx = Vector3.Dot(vel, wc.wheelHit.forwardDir);
-            float vy = Vector3.Dot(vel, wc.wheelHit.sidewaysDir);
+            // Contact speeds are filled in by the slot before Apply() is called.
+            float vx = wc.forwardFriction.speed;
+            float vy = wc.sideFriction.speed;
 
             // --- wheel spin: drive + brake first (gives the slip-producing omega) ---
             float omega = wheel.angularVelocity;
