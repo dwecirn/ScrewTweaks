@@ -217,22 +217,30 @@ body over slow inputs like roll and pitch. The high-speed numbers are the slopes
 shim stack is open — what a kerb or a landing sees, and lower means the hit is absorbed instead of passed
 into the chassis.
 
+The four coefficients are **saved with the car, not with the mod**: they are properties of the suspension
+part, edited in the car builder right below the game's own *Spring Force* and *Damper Force*. Every car
+keeps its own setup, and a car you share carries it.
+
+| Property | Default | Meaning |
+|---|---|---|
+| `damperbumplow` | 160% | Bump below the knee. The bleed, which controls the body over slow inputs |
+| `damperbumphigh` | 40% | Bump above the knee. What a kerb sees: lower absorbs the hit |
+| `damperreboundlow` | 320% | Rebound below the knee |
+| `damperreboundhigh` | 80% | Rebound above the knee. Raise it if the car pogoes after a landing |
+
+They are percentages of the damping the game computed for that wheel, so they mean the same thing on a
+go-kart and on a truck, and all four at 100% reproduces the game exactly. The game's *Damper Force* is not
+replaced — it is still the base, and these four are its shape.
+
 | Setting | Default | Meaning |
 |---|---|---|
 | `Model/Selected` | `Native` | `Native` = the game's own damper, unchanged |
-| `Damper/BumpLow` | `1.60` | Bump below the knee |
-| `Damper/BumpHigh` | `0.40` | Bump above the knee. Lower absorbs kerbs |
-| `Damper/ReboundLow` | `3.20` | Rebound below the knee |
-| `Damper/ReboundHigh` | `0.80` | Rebound above the knee. Raise it if the car pogoes after a landing |
-| `Damper/KneeVelocity` | `0.10` | Velocity [m/s] where the shim stack opens, shared by both directions |
 | `Damper/ReboundFloor` | `0.00` | How far the damper may pull the body *down*, as a fraction of the wheel's static load. Not applied at all while a vertical model is selected |
 
-Every coefficient is a multiple of the damping the game computed for that wheel, so the numbers mean the
-same thing on a go-kart and on a truck, and **all four at 1.00 reproduces the game exactly** — that is the
-A/B switch.
-
-The two high-speed numbers trade against each other: less blow-off absorbs kerbs but lets the car launch
-off its springs after a landing. If kerbs feel right and landings pogo, raise `ReboundHigh`.
+**The four properties are only read while a damper model is selected.** `Native` leaves the game's own
+damper in charge and does not read them — but they are saved either way, so switching models never costs a
+car its setup. (Injecting them only when the model needs them would make a shared car's setup depend on the
+sender's mod configuration, which is exactly what keeping the data on the car is meant to avoid.)
 
 **The `Suspension` section also shows live per-wheel suspension state:**
 

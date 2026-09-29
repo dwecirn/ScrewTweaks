@@ -197,16 +197,41 @@ Everything is a multiple of the game's own coefficient `C`, so the game's mass, 
 `damperforce` scaling is preserved, and the numbers are dimensionless - absolute N.s/m would be two orders
 of magnitude apart between a go-kart and a truck. Defaults:
 
-| Setting | Default | Meaning |
-|---|---|---|
-| `Damper/BumpLow` | 1.60 | Bump below the knee. The slope of the bleed, and what controls the body over slow inputs |
-| `Damper/BumpHigh` | 0.40 | Bump above the knee. What a kerb sees: lower absorbs the hit |
-| `Damper/ReboundLow` | 3.20 | Rebound below the knee. What arrests the body after a bump |
-| `Damper/ReboundHigh` | 0.80 | Rebound above the knee. Raising it stops a car launching off its springs after a landing |
-| `Damper/KneeVelocity` | 0.10 | Velocity [m/s] where the shim stack opens, shared by both directions |
+The four coefficients are **properties of the suspension part**, stored in the car's own save file next to
+the game's Spring Force and Damper Force, so every car keeps its own setup and a car shared with someone
+else carries it. They are edited in the car builder. The knee velocity is not one of them: it is a shaft
+property, the same for every car, so it is a constant in the code.
 
-**All four at 1.00 reproduces the game exactly**, which is the A/B switch. The knee velocity is a shaft
-property and does not scale with the car, which is why it is an absolute m/s value.
+| Property | Default | Meaning |
+|---|---|---|
+| `damperbumplow` | 160% | Bump below the knee. The slope of the bleed, and what controls the body over slow inputs |
+| `damperbumphigh` | 40% | Bump above the knee. What a kerb sees: lower absorbs the hit |
+| `damperreboundlow` | 320% | Rebound below the knee. What arrests the body after a bump |
+| `damperreboundhigh` | 80% | Rebound above the knee. Raising it stops a car launching off its springs after a landing |
+
+**All four at 100% reproduces the game exactly**, which is the A/B switch. The game's own `Damper Force` is
+not replaced - it is still the base coefficient, and these four are its shape.
+
+### 5.2.1 Why part properties, and not a mod-side save layer
+
+Because the game already has one, and it is a good one. `PartProperty.ToFileLine()` writes each property
+into the car file as a plain text line - `typeID|name|displayName|value` - and loading resolves the type
+through the game's own `PropertyType.PropertyFromID` registry. Two consequences shape the rules:
+
+- **Only reuse the game's own property types.** A car saved with a custom type would come back with that
+  property invalid, because vanilla cannot resolve the id; a `PropString` is understood by everyone, so our
+  data survives a round trip through a vanilla session.
+- **Never rename or re-mean a property.** The name and the meaning are the schema; a changed meaning needs a
+  new name. Adding is always safe, changing is not - the same discipline as any append-only format.
+
+Missing properties are not a problem either way: parts declare their own defaults, and the injection adds
+ours to a car that does not have them, so an old save gains them at their defaults rather than becoming
+unreadable. The display name is the one thing that *is* written into the car file, so it is refreshed from
+the current language whenever a property is loaded - otherwise a car saved in one language would keep that
+language's labels forever.
+
+The one thing this cannot do is carry data that is not a property of a part. If that is ever needed, the
+usual trick is to hang it on a canonical part rather than invent a container.
 
 An earlier revision had only three numbers - a rebound-to-bump ratio, a low-speed gain and a slope ratio -
 which meant bump and rebound shared one curve shape and could only be scaled, not shaped. That is not a

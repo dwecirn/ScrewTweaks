@@ -64,7 +64,8 @@ namespace ScrewTweaks.Physics.Suspension
             try
             {
                 force = model.Evaluate(new DamperState(
-                    wc, compressing, Mathf.Abs(spring.velocity), damper.bumpForce));
+                    wc, compressing, Mathf.Abs(spring.velocity), damper.bumpForce,
+                    DamperProperties.For(wc.PartConfigurationSuspension)));
             }
             catch
             {

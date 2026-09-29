@@ -12,12 +12,14 @@ namespace ScrewTweaks.Physics.Suspension
     /// </summary>
     public readonly struct DamperState
     {
-        internal DamperState(WheelController wheel, bool compressing, float velocity, float gameCoefficient)
+        internal DamperState(WheelController wheel, bool compressing, float velocity, float gameCoefficient,
+            DamperSetup setup)
         {
             Wheel = wheel;
             Compressing = compressing;
             Velocity = velocity;
             GameCoefficient = gameCoefficient;
+            Setup = setup;
         }
 
         /// <summary>The suspension being evaluated. Escape hatch for anything not listed here.</summary>
@@ -49,6 +51,19 @@ namespace ScrewTweaks.Physics.Suspension
 
         /// <summary>What the game's own damper would produce at this velocity: `GameCoefficient * Velocity`.</summary>
         public float GameForce => GameCoefficient * Velocity;
+
+        /// <summary>
+        /// This wheel's four-way setup, read from the suspension part it is fitted to - so it travels with
+        /// the car rather than with the mod. The game's own `damperforce` is still the base coefficient the
+        /// four are multiples of.
+        /// </summary>
+        public DamperSetup Setup { get; }
+
+        /// <summary>
+        /// Velocity [m/s] at which each half's shim stack opens. A shaft property, so it is the same for
+        /// every car and is not stored per part.
+        /// </summary>
+        public float KneeVelocity => DamperTuning.KneeVelocity;
     }
 
     /// <summary>
@@ -98,7 +113,7 @@ namespace ScrewTweaks.Physics.Suspension
         internal static void Init()
         {
             Register(new NativeDamperModel());
-            Register(new DigressiveDamper());
+            Register(new FourWayDamper());
 
             // An unknown name (hand-edited config, or a model whose plugin is missing) falls back to
             // Native: a damper that is silently wrong is worse than the game's own.

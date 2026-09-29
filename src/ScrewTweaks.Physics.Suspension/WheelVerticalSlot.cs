@@ -244,7 +244,8 @@ namespace ScrewTweaks.Physics.Suspension
                     : -damper.reboundForce * shape;
             }
 
-            float force = model.Evaluate(new DamperState(wc, compressing, magnitude, damper.bumpForce));
+            float force = model.Evaluate(new DamperState(wc, compressing, magnitude, damper.bumpForce,
+                DamperProperties.For(wc.PartConfigurationSuspension)));
             if (!(force >= 0f)) force = 0f;
             return compressing ? force : -force;
         }

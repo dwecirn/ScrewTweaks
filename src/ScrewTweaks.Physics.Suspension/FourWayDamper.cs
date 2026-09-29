@@ -28,22 +28,24 @@ namespace ScrewTweaks.Physics.Suspension
     /// scaling the game already does is preserved, and all four at 1.00 reproduces the game exactly -
     /// which is the A/B switch to compare against.
     /// </summary>
-    internal sealed class DigressiveDamper : IDamperModel
+    internal sealed class FourWayDamper : IDamperModel
     {
         public string Name => "Four way";
 
         public string Description =>
-            "Bump and rebound, each with its own low-speed (bleed) and high-speed (blow-off) coefficient. " +
-            "Stiffer when slow so the body is controlled, softer on sharp hits so kerbs are absorbed. " +
-            "All four coefficients at 1.00 reproduces the game exactly.";
+            "Bump and rebound, each with its own low-speed (bleed) and high-speed (blow-off) coefficient, " +
+            "read from the suspension part so every car keeps its own. Stiffer when slow so the body is " +
+            "controlled, softer on sharp hits so kerbs are absorbed. All four coefficients at 100% " +
+            "reproduces the game exactly.";
 
         public float Evaluate(in DamperState state)
         {
             float v = state.Velocity;
-            float knee = Mathf.Max(DamperTuning.KneeVelocity, 1e-4f);
+            float knee = state.KneeVelocity;
+            var setup = state.Setup;
 
-            float low = state.Compressing ? DamperTuning.BumpLow : DamperTuning.ReboundLow;
-            float high = state.Compressing ? DamperTuning.BumpHigh : DamperTuning.ReboundHigh;
+            float low = state.Compressing ? setup.BumpLow : setup.ReboundLow;
+            float high = state.Compressing ? setup.BumpHigh : setup.ReboundHigh;
 
             float coefficient = v <= knee
                 ? low * v
