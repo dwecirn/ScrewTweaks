@@ -535,3 +535,46 @@ The model adds, all driven by `wheel.camberAngle`:
 
 `CamberDynamics` scales all three (0 = thrust only, 1 = typical coefficients). Nothing changes at
 zero camber, which is the default, so this only shows up for cars that actually run camber.
+
+---
+
+## 19. Suspension module - findings and plan (deferred)
+
+Target: a future `ScrewTweaks.Physics.Suspension`, polishing the **existing** spring/damper only.
+No ARB, no toe, no added geometry (the user explicitly preferred improving what is already there).
+
+### Findings (2026-09)
+
+**Spring is broadly fine:**
+
+    spring.force = spring.maxForce * spring.forceCurve.Evaluate(spring.compressionPercent)
+    compressionPercent = (maxLength - length) / maxLength        // always in [0,1], never extrapolated
+
+`maxForce` is scaled linearly by the part's `springforce`, and the curve shape comes from
+`progressiveness` (`SampleProgressivenessCurve`). Stiffness and progressiveness are therefore both
+adjustable and the curve is used over its whole domain.
+
+**Damper has three concrete gaps:**
+
+1. **No bump/rebound split.** `WheelPropertiesSetter` sets
+   `damper.bumpForce = suspensionSpring.damper` and `damper.reboundForce = reboundRate`, but
+   `GetProperties` assigns `reboundRate = suspensionSpring.damper` - the same value. So the single
+   `damperforce` property scales both, and "stiffer rebound than bump" is impossible.
+2. **Purely linear.** `DamperCurve` is never assigned on the normal wheel path (only on the tank
+   path), so it stays at the default straight line `(0,0)->(1,1)` and the force is `C * |v|`.
+   Real dampers are digressive: high force at low shaft speed, blow-off at high speed.
+3. **The curve is fed a raw velocity.** `damper.curve.Evaluate(|velocity|)` passes m/s while the
+   documented domain is [0,1], so any *shaped* curve is extrapolated (linearly, using the last
+   key's tangent) above 1 m/s - a latent source of absurd forces.
+
+### Plan
+
+1. bump/rebound split (`ReboundRatio`);
+2. damper velocity curve with the velocity normalised so a shaped curve actually works;
+3. spring: express `springforce` as an intuitive rate and check that the normalisation does not
+   leave half the curve unused;
+4. eventually the full **four-way damper**: {low speed, high speed} x {bump, rebound} - the same
+   structure, just split into two velocity bands (bleed = linear, shim stack = digressive plateau).
+
+Inputs stay the game's own `springforce` / `damperforce` / `progressiveness`, and defaults should
+stay close to vanilla. Deferred by the user as of 2026-09.
