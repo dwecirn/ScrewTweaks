@@ -167,6 +167,7 @@ namespace ScrewTweaks.Panel
             if (_active < 0 || _active >= sections.Count) _active = 0;
 
             PanelUi.BeginWindow();
+            DrawBackdrop();
 
             // The grip sits in the corner that is free to follow the mouse, so which one it is depends
             // on whether the window is currently up against the right edge of the screen.
@@ -273,6 +274,22 @@ namespace ScrewTweaks.Panel
         }
 
         /// <summary>
+        /// A background of our own. The skin's window is translucent, which is fine over a menu and not over
+        /// a moving scene: the text is the thing that has to stay readable. Drawn first, so everything else
+        /// lands on top, and a little oversized so the style's own padding is covered too.
+        /// </summary>
+        private void DrawBackdrop()
+        {
+            if (Event.current.type != EventType.Repaint) return;
+
+            Color previous = GUI.color;
+            GUI.color = new Color(0.05f, 0.06f, 0.08f, 0.94f);
+            GUI.DrawTexture(new Rect(-16f, -16f, _window.width + 32f, _window.height + 32f),
+                Texture2D.whiteTexture);
+            GUI.color = previous;
+        }
+
+        /// <summary>
         /// Draws whatever the section under the mouse asked to explain. Kept inside the window so it is
         /// clipped with it, and flipped above the cursor when there is no room below.
         /// </summary>
@@ -287,6 +304,7 @@ namespace ScrewTweaks.Panel
             {
                 wordWrap = true,
                 alignment = TextAnchor.UpperLeft,
+                fontSize = 11,
                 padding = new RectOffset(8, 8, 6, 6)
             };
 
