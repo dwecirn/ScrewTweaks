@@ -24,7 +24,7 @@ namespace ScrewTweaks.Physics.Tires
         {
             TireModels.Init();
             Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), PluginInfo.GUID);
-            Panel.Register(PluginInfo.Name, DrawSection);
+            Panel.Register("Tires", DrawSection);
             Logger.LogInfo($"[{PluginInfo.Name}] version {PluginInfo.Version} loaded.");
         }
 

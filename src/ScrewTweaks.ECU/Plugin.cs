@@ -45,7 +45,7 @@ namespace ScrewTweaks.ECU
         private void Start()
         {
             Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), PluginInfo.GUID);
-            Panel.Register(PluginInfo.Name, DrawSection);
+            Panel.Register("ECU", DrawSection);
             Logger.LogInfo($"[{PluginInfo.Name}] version {PluginInfo.Version} loaded.");
         }
 
