@@ -29,7 +29,6 @@
 
   <PropertyGroup>
     <!-- Fallbacks in case keybinds.props is absent. -->
-    <AssistKey Condition="'$(AssistKey)' == ''">B</AssistKey>
     <AutoShiftKey Condition="'$(AutoShiftKey)' == ''">N</AutoShiftKey>
     <PanelKey Condition="'$(PanelKey)' == ''">F7</PanelKey>
     <DumpKey Condition="'$(DumpKey)' == ''">F8</DumpKey>
@@ -97,7 +96,7 @@
       <_KeyBindsFile>$(IntermediateOutputPath)KeyBinds.g.cs</_KeyBindsFile>
     </PropertyGroup>
     <WriteLinesToFile File="$(_KeyBindsFile)" Overwrite="true"
-      Lines="// &lt;auto-generated/&gt; from keybinds.props;namespace $(AssemblyName).Generated;{;    public static class KeyBinds;    {;        public const UnityEngine.KeyCode Assist = UnityEngine.KeyCode.$(AssistKey)%3B;        public const UnityEngine.KeyCode AutoShift = UnityEngine.KeyCode.$(AutoShiftKey)%3B;        public const UnityEngine.KeyCode Panel = UnityEngine.KeyCode.$(PanelKey)%3B;        public const UnityEngine.KeyCode Dump = UnityEngine.KeyCode.$(DumpKey)%3B;        public const UnityEngine.KeyCode Telemetry = UnityEngine.KeyCode.$(TelemetryKey)%3B;    };}"
+      Lines="// &lt;auto-generated/&gt; from keybinds.props;namespace $(AssemblyName).Generated;{;    public static class KeyBinds;    {;        public const UnityEngine.KeyCode AutoShift = UnityEngine.KeyCode.$(AutoShiftKey)%3B;        public const UnityEngine.KeyCode Panel = UnityEngine.KeyCode.$(PanelKey)%3B;        public const UnityEngine.KeyCode Dump = UnityEngine.KeyCode.$(DumpKey)%3B;        public const UnityEngine.KeyCode Telemetry = UnityEngine.KeyCode.$(TelemetryKey)%3B;    };}"
       WriteOnlyWhenDifferent="true" />
     <ItemGroup>
       <Compile Include="$(_KeyBindsFile)" />

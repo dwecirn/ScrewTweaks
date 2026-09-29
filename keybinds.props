@@ -10,7 +10,6 @@
         BepInEx/config/dev.dwecirn.screwtweaks.assist.cfg
         BepInEx/config/dev.dwecirn.screwtweaks.autoshift.cfg
     -->
-    <AssistKey>B</AssistKey>
     <AutoShiftKey>N</AutoShiftKey>
     <PanelKey>F7</PanelKey>
     <DumpKey>F8</DumpKey>
