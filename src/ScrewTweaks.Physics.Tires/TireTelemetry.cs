@@ -19,6 +19,8 @@ namespace ScrewTweaks.Physics.Tires
         public float FyMax;
         public float Vx;
         public float Omega;
+        public float Radius;
+        public float Sigma;
         public float SlipXk;   // slip-vector share used by the combined-slip model
         public float SlipYs;
     }

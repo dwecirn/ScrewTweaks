@@ -35,6 +35,9 @@ namespace ScrewTweaks.Physics.Tires
             float inertia = Mathf.Max(wheel.inertia, 1e-4f);
             float fz = Mathf.Max(wheel.load, 0f);
 
+            // Model parameters come from this tire, not from a global setting.
+            var parameters = TireParameters.From(wheel);
+
             // Contact speeds are filled in by the slot before Apply() is called.
             float vx = wc.forwardFriction.speed;
             float vy = wc.sideFriction.speed;
@@ -56,7 +59,7 @@ namespace ScrewTweaks.Physics.Tires
 
             // --- relaxation length: the tyre needs distance, not time, to build slip ---
             var state = TireStates.Get(wc);
-            float sigma = TireTuning.RelaxationLength;
+            float sigma = parameters.SigmaK;
             float kappa;
             float alpha;
             if (sigma <= 1e-4f || !wc.hasHit)
@@ -72,9 +75,8 @@ namespace ScrewTweaks.Physics.Tires
                 // First-order lag, rate = |Vx| / sigma. Speed is floored so the slip cannot freeze
                 // at a standstill; the exponential form is stable for any step size.
                 float relaxSpeed = Mathf.Max(Mathf.Abs(vx), 3f);
-                float blend = 1f - Mathf.Exp(-relaxSpeed / sigma * dt);
-                state.KappaRelaxed += (kappaSs - state.KappaRelaxed) * blend;
-                state.AlphaRelaxed += (alphaSs - state.AlphaRelaxed) * blend;
+                state.KappaRelaxed += (kappaSs - state.KappaRelaxed) * (1f - Mathf.Exp(-relaxSpeed / parameters.SigmaK * dt));
+                state.AlphaRelaxed += (alphaSs - state.AlphaRelaxed) * (1f - Mathf.Exp(-relaxSpeed / parameters.SigmaA * dt));
                 kappa = state.KappaRelaxed;
                 alpha = state.AlphaRelaxed;
             }
@@ -99,7 +101,7 @@ namespace ScrewTweaks.Physics.Tires
             float fyPure = sideMax * Mf(b, c, e, alphaEff);
 
             // --- camber thrust (native has none) is part of the lateral force ---
-            fyPure += TireTuning.CamberThrust * wheel.camberAngle * fz;
+            fyPure += parameters.CamberThrust * wheel.camberAngle * fz;
 
             // --- combined slip: ADAMS friction ellipse ---
             CombineAdmsEllipse(fxPure, fyPure, fwdMax, sideMax, kappa, alpha, out float fxCombined, out float fyCombined);
@@ -131,6 +133,8 @@ namespace ScrewTweaks.Physics.Tires
                 FyMax = sideMax,
                 Vx = vx,
                 Omega = omega,
+                Radius = radius,
+                Sigma = parameters.SigmaA,
                 SlipXk = kappa,
                 SlipYs = Mathf.Sin(alpha),
             });

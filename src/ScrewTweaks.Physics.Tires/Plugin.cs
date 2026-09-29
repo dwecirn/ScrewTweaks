@@ -45,7 +45,7 @@ namespace ScrewTweaks.Physics.Tires
                 "Pacejka",
                 "RelaxationLength",
                 0.30f,
-                "Distance [m] the tyre needs to build up slip. Larger = softer/laggier response. 0 disables it.");
+                "Distance [m] the tyre needs to build up slip, at a 0.30 m wheel. Scaled per tire by its radius, so big soft tires get a longer one and small rigid ones a shorter one. 0 disables it.");
         }
 
         private void Start()
@@ -111,7 +111,7 @@ namespace ScrewTweaks.Physics.Tires
 
                 GUILayout.Label(
                     $"{s.Name}: k={s.Kappa,6:F3}({s.KappaRaw,6:F3}) a={s.AlphaDeg,6:F1}({s.AlphaRawDeg,6:F1}) " +
-                    $"y={SafeRatio(s.Fy, s.FyMax),4:F2} Fz={s.Fz,6:F0} vx={s.Vx,6:F1}");
+                    $"y={SafeRatio(s.Fy, s.FyMax),4:F2} Fz={s.Fz,6:F0} R={s.Radius,5:F2} sigma={s.Sigma,5:F2}");
             }
 
             GUILayout.Space(10f);
