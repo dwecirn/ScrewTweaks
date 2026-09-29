@@ -47,6 +47,7 @@ namespace ScrewTweaks.Physics.Tires
         internal static void Init()
         {
             Register(new NativeTireModel());
+            Register(new PacejkaTireModel());
             Register(new ZeroGripTireModel());
             Current = Registered[0];
         }
