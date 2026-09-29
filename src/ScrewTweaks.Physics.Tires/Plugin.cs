@@ -6,7 +6,7 @@ using BepInEx;
 using HarmonyLib;
 using NWH.WheelController3D;
 using ScrewTweaks.Physics.Tires.Generated;
-using ScrewTweaks.UI;
+using ScrewTweaks.Panel;
 using UnityEngine;
 
 namespace ScrewTweaks.Physics.Tires
@@ -18,7 +18,7 @@ namespace ScrewTweaks.Physics.Tires
         public const string Version = PluginVersion.Value;
     }
 
-    [BepInDependency(ScrewTweaks.UI.PluginInfo.GUID)]
+    [BepInDependency(ScrewTweaks.Panel.PluginInfo.GUID)]
     [BepInPlugin(PluginInfo.GUID, PluginInfo.Name, PluginInfo.Version)]
     public class Plugin : BaseUnityPlugin
     {
@@ -79,7 +79,7 @@ namespace ScrewTweaks.Physics.Tires
             Init("tire models", TireModels.Init);
             Init("friction slot patch", () => Harmony.CreateAndPatchAll(typeof(TireSlot), PluginInfo.GUID));
 
-            Panel.Register("Tires", DrawSection);
+            PanelHost.Register("Tires", DrawSection);
             TireRecorder.Log = Logger;
             Logger.LogInfo($"[{PluginInfo.Name}] version {PluginInfo.Version} loaded (model: {TireModels.Current?.Name ?? "none"}).");
         }

@@ -6,7 +6,7 @@ using System.Reflection;
 using BepInEx;
 using BepInEx.Configuration;
 using HarmonyLib;
-using ScrewTweaks.UI;
+using ScrewTweaks.Panel;
 using UnityEngine;
 
 using ScrewTweaks.ECU.Generated;
@@ -20,7 +20,7 @@ namespace ScrewTweaks.ECU
         public const string Version = PluginVersion.Value;
     }
 
-    [BepInDependency(ScrewTweaks.UI.PluginInfo.GUID)]
+    [BepInDependency(ScrewTweaks.Panel.PluginInfo.GUID)]
     [BepInPlugin(PluginInfo.GUID, PluginInfo.Name, PluginInfo.Version)]
     public class Plugin : BaseUnityPlugin
     {
@@ -54,7 +54,7 @@ namespace ScrewTweaks.ECU
         private void Start()
         {
             Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), PluginInfo.GUID);
-            Panel.Register("ECU", DrawSection);
+            PanelHost.Register("ECU", DrawSection);
             Logger.LogInfo($"[{PluginInfo.Name}] version {PluginInfo.Version} loaded.");
         }
 

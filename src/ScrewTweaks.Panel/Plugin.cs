@@ -2,25 +2,30 @@
 
 using System;
 using BepInEx;
-using ScrewTweaks.UI.Generated;
+using ScrewTweaks.Panel.Generated;
 using UnityEngine;
 
-namespace ScrewTweaks.UI
+namespace ScrewTweaks.Panel
 {
     public static class PluginInfo
     {
-        public const string GUID = "dev.dwecirn.screwtweaks.ui";
-        public const string Name = "Screw Tweaks - UI";
+        public const string GUID = "dev.dwecirn.screwtweaks.panel";
+        public const string Name = "Screw Tweaks - Panel";
         public const string Version = PluginVersion.Value;
     }
 
     [BepInPlugin(PluginInfo.GUID, PluginInfo.Name, PluginInfo.Version)]
     public class Plugin : BaseUnityPlugin
     {
+        private const float WindowWidth = 440f;
+        private const float WindowHeight = 420f;
+        private const float Margin = 24f;
+
         private bool _shown;
         private int _active;
+        private int _lastScreenWidth = -1;
         private Vector2 _scroll;
-        private Rect _window = new Rect(24f, 24f, 440f, 420f);
+        private Rect _window = new Rect(0f, Margin, WindowWidth, WindowHeight);
 
         private void Update()
         {
@@ -37,12 +42,24 @@ namespace ScrewTweaks.UI
         private void OnGUI()
         {
             if (!_shown) return;
+
+            // Anchored to the right edge. Only re-anchored when the resolution changes (or on the
+            // first frame), so a resize cannot strand the window off screen while dragging still
+            // sticks.
+            if (Screen.width != _lastScreenWidth)
+            {
+                _lastScreenWidth = Screen.width;
+                _window.width = WindowWidth;
+                _window.height = Mathf.Min(WindowHeight, Mathf.Max(200f, Screen.height - 2f * Margin));
+                _window.x = Mathf.Max(Margin, Screen.width - _window.width - Margin);
+            }
+
             _window = GUILayout.Window(0x5EC1, _window, DrawWindow, $"Screw Tweaks  ({KeyBinds.Panel})");
         }
 
         private void DrawWindow(int id)
         {
-            var sections = Panel.All;
+            var sections = PanelHost.All;
             if (sections.Count == 0)
             {
                 GUILayout.Label("No sections registered.");

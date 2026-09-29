@@ -3,13 +3,17 @@
 using System;
 using System.Collections.Generic;
 
-namespace ScrewTweaks.UI
+namespace ScrewTweaks.Panel
 {
     /// <summary>
     /// Shared in-game panel host (F7). Feature plugins register a titled section in their
     /// Start() and draw it with GUILayout; the host renders the tab bar and the active section.
+    ///
+    /// Named PanelHost rather than Panel because a type cannot share its name with the last segment
+    /// of its own namespace: `ScrewTweaks.Panel.Panel` would make `Panel.Register(...)` resolve
+    /// `Panel` to the namespace instead of the type.
     /// </summary>
-    public static class Panel
+    public static class PanelHost
     {
         internal sealed class Section
         {

@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
@@ -15,7 +15,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScrewTweaks.Steering", "src
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScrewTweaks.ECU", "src\ScrewTweaks.ECU\ScrewTweaks.ECU.csproj", "{A5C6D3D1-4400-445D-A506-2FF4C766CF43}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScrewTweaks.UI", "src\ScrewTweaks.UI\ScrewTweaks.UI.csproj", "{0B6AEAEF-3C98-40DD-AA92-0B79B96104F1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScrewTweaks.Panel", "src\ScrewTweaks.Panel\ScrewTweaks.Panel.csproj", "{0B6AEAEF-3C98-40DD-AA92-0B79B96104F1}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScrewTweaks.Physics.Tires", "src\ScrewTweaks.Physics.Tires\ScrewTweaks.Physics.Tires.csproj", "{4D8B79F6-73A6-46FA-B3E0-8490948CD606}"
 EndProject

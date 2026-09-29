@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <AssemblyName>ScrewTweaks.UI</AssemblyName>
-    <RootNamespace>ScrewTweaks.UI</RootNamespace>
+    <AssemblyName>ScrewTweaks.Panel</AssemblyName>
+    <RootNamespace>ScrewTweaks.Panel</RootNamespace>
     <Version>0.1.0</Version>
   </PropertyGroup>
 

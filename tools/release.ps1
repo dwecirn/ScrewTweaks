@@ -84,7 +84,7 @@ try {
     else {
         Write-Host "Changed: $($changedNames -join ', ')" -ForegroundColor Green
         Write-Host '  -> bump only those; add a line per change to CHANGELOG.md.'
-        Write-Host '  -> if a public API changed (Panel.Register, ITireModel, IBrakeAid, IDriveAid),'
+        Write-Host '  -> if a public API changed (PanelHost.Register, ITireModel, IBrakeAid, IDriveAid),'
         Write-Host '     bump major and state the minimum in the [BepInDependency] attributes.'
     }
 

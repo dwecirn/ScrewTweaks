@@ -37,7 +37,7 @@
 2. すべての `ScrewTweaks.*.dll` を `BepInEx/plugins/` に入れます。
 3. ゲームを起動します。`BepInEx/LogOutput.log` にプラグインごとに 1 行ログが出ます。
 
-> `ScrewTweaks.UI.dll` は**必須**です。これはパネルのホストで、各機能プラグインは自分のセクションをここに登録します。それ以外のプラグインはすべて任意で、互いに独立しています。
+> `ScrewTweaks.Panel.dll` は**必須**です。これはパネルのホストで、各機能プラグインは自分のセクションをここに登録します。それ以外のプラグインはすべて任意で、互いに独立しています。
 
 ---
 
@@ -88,7 +88,7 @@ dotnet build ScrewTweaks.sln --no-restore -m:1 -t:ListVersions
 
 | アセンブリ | 役割 | キー |
 |---|---|---|
-| `ScrewTweaks.UI` | 共有 F7 パネルホスト。機能自体は持ちません | **F7** |
+| `ScrewTweaks.Panel` | 共有 F7 パネルホスト。機能自体は持ちません | **F7** |
 | `ScrewTweaks.Physics.Tires` | 差し替え可能なタイヤモデルスロット（ゲーム内で選択） | **F9**（テレメトリ記録） |
 | `ScrewTweaks.ECU` | ABS / トラクションコントロール | — |
 | `ScrewTweaks.Steering` | Instant Steering + Steering Limit Relax | — |
@@ -198,9 +198,9 @@ PartWheelDirt2 g= 0.30  BCDE=(  7.0, 1.10, 0.83, 1.00)  k= 0.021/ 0.000 a=  -4.1
 ### 1. パネルセクション
 
 ```csharp
-using ScrewTweaks.UI;
+using ScrewTweaks.Panel;
 
-private void Start() => Panel.Register("My Section", DrawSection);
+private void Start() => PanelHost.Register("My Section", DrawSection);
 
 private void DrawSection()
 {
@@ -209,7 +209,7 @@ private void DrawSection()
 }
 ```
 
-`Start()` から `Panel.Register(title, draw)` を呼びます。描画コールバックはスクロールビュー内で毎フレーム呼ばれるので `GUILayout` を使ってください。同じタイトルで再登録すると、以前のコールバックが置き換わります。
+`Start()` から `PanelHost.Register(title, draw)` を呼びます。描画コールバックはスクロールビュー内で毎フレーム呼ばれるので `GUILayout` を使ってください。同じタイトルで再登録すると、以前のコールバックが置き換わります。
 
 ### 2. タイヤモデル
 

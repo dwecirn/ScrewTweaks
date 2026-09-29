@@ -37,7 +37,7 @@
 2. 把所有 `ScrewTweaks.*.dll` 放进 `BepInEx/plugins/`。
 3. 启动游戏。`BepInEx/LogOutput.log` 里应该每个插件各有一行日志。
 
-> `ScrewTweaks.UI.dll` **必须存在**。它是面板宿主，其他功能插件把各自的板块注册进去。其余插件都是可选的、互相独立的。
+> `ScrewTweaks.Panel.dll` **必须存在**。它是面板宿主，其他功能插件把各自的板块注册进去。其余插件都是可选的、互相独立的。
 
 ---
 
@@ -88,7 +88,7 @@ dotnet build ScrewTweaks.sln --no-restore -m:1 -t:ListVersions
 
 | 程序集 | 用途 | 键 |
 |---|---|---|
-| `ScrewTweaks.UI` | 共享的 F7 面板宿主，自身没有功能 | **F7** |
+| `ScrewTweaks.Panel` | 共享的 F7 面板宿主，自身没有功能 | **F7** |
 | `ScrewTweaks.Physics.Tires` | 可插拔的轮胎模型插槽（游戏内可选） | **F9**（录制遥测） |
 | `ScrewTweaks.ECU` | ABS / 牵引力控制通道 | — |
 | `ScrewTweaks.Steering` | Instant Steering + Steering Limit Relax | — |
@@ -199,9 +199,9 @@ PartWheelDirt2 g= 0.30  BCDE=(  7.0, 1.10, 0.83, 1.00)  k= 0.021/ 0.000 a=  -4.1
 ### 1. 面板板块
 
 ```csharp
-using ScrewTweaks.UI;
+using ScrewTweaks.Panel;
 
-private void Start() => Panel.Register("My Section", DrawSection);
+private void Start() => PanelHost.Register("My Section", DrawSection);
 
 private void DrawSection()
 {
@@ -210,7 +210,7 @@ private void DrawSection()
 }
 ```
 
-在 `Start()` 里调用 `Panel.Register(title, draw)`。绘制回调每帧在一个滚动视图内被调用一次；请使用 `GUILayout`。用同一个标题再次注册会替换掉原来的回调。
+在 `Start()` 里调用 `PanelHost.Register(title, draw)`。绘制回调每帧在一个滚动视图内被调用一次；请使用 `GUILayout`。用同一个标题再次注册会替换掉原来的回调。
 
 ### 2. 轮胎模型
 

@@ -44,7 +44,7 @@ Everything is configured from one shared in-game panel plus plain `.cfg` files.
 2. Drop every `ScrewTweaks.*.dll` into `BepInEx/plugins/`.
 3. Launch the game. A log line per plugin should appear in `BepInEx/LogOutput.log`.
 
-> `ScrewTweaks.UI.dll` **must** be present. It is the panel host; the feature plugins register their
+> `ScrewTweaks.Panel.dll` **must** be present. It is the panel host; the feature plugins register their
 > sections into it. Everything else is optional and independent.
 
 ---
@@ -105,7 +105,7 @@ dotnet build ScrewTweaks.sln --no-restore -m:1 -t:ListVersions
 
 | Assembly | Purpose | Key |
 |---|---|---|
-| `ScrewTweaks.UI` | Shared F7 panel host. No features of its own. | **F7** |
+| `ScrewTweaks.Panel` | Shared F7 panel host. No features of its own. | **F7** |
 | `ScrewTweaks.Physics.Tires` | Pluggable tire model slot (in-game selectable) | **F9** (record telemetry) |
 | `ScrewTweaks.ECU` | ABS / traction control channels | — |
 | `ScrewTweaks.Steering` | Instant Steering + Steering Limit Relax | — |
@@ -228,9 +228,9 @@ and declare the dependency so load order is correct:
 ### 1. A panel section
 
 ```csharp
-using ScrewTweaks.UI;
+using ScrewTweaks.Panel;
 
-private void Start() => Panel.Register("My Section", DrawSection);
+private void Start() => PanelHost.Register("My Section", DrawSection);
 
 private void DrawSection()
 {
@@ -239,7 +239,7 @@ private void DrawSection()
 }
 ```
 
-`Panel.Register(title, draw)` is called from your `Start()`. The draw action re-runs every frame
+`PanelHost.Register(title, draw)` is called from your `Start()`. The draw action re-runs every frame
 inside a scroll view; use `GUILayout`. Registering the same title again replaces the action.
 
 ### 2. A tire model
