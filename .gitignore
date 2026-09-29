@@ -4,6 +4,9 @@ obj/
 *.dll
 *.pdb
 
+# --- Distribution packages ---
+/dist/
+
 # --- IDE / editor ---
 .idea/
 .vs/
