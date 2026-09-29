@@ -83,7 +83,8 @@ try {
     }
     else {
         Write-Host "Changed: $($changedNames -join ', ')" -ForegroundColor Green
-        Write-Host '  -> bump only those; add a line per change to CHANGELOG.md.'
+        Write-Host '  -> bump only those components.'
+        Write-Host '  -> describe the changes in the GitHub release notes (no CHANGELOG in the repo).'
         Write-Host '  -> if a public API changed (PanelHost.Register, ITireModel, IBrakeAid, IDriveAid),'
         Write-Host '     bump major and state the minimum in the [BepInDependency] attributes.'
     }
