@@ -110,7 +110,7 @@ namespace ScrewTweaks.Physics.Suspension
             return force > 0f ? force : 0f; // a tyre pushes, it does not pull
         }
     }
-
+ 
     /// <summary>Registry of selectable tyre vertical models. Other plugins may add models at Start().</summary>
     public static class TireVerticalModels
     {

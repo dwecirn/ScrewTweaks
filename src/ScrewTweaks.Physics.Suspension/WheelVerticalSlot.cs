@@ -201,7 +201,16 @@ namespace ScrewTweaks.Physics.Suspension
             // pull. Leaving the clamp in place would silently throw away the whole rebound half of every
             // wheel hop, which is what made the wheels bounce twice off a small bump no matter how hard
             // the damper was set.
+            //
+            // It is still bounded, though: the body cannot be pulled down harder than the ground is
+            // pushing the wheel up, because past that the wheel would simply leave the ground. Without
+            // this, one bad damper coefficient - a value rescaled wrong, a hand-edited save - turns into
+            // tens of kN of downward force and the car is thrown into the air on spawn.
+            float support = tireForce + unsprungMass * gravityDown;
+            if (support < 0f) support = 0f;
+
             float applied = suspensionTotal + stopReaction;
+            if (applied < -support) applied = -support;
 
             Vector3 normal = wc.wheelHit.raycastHit.normal;
             float cos = Mathf.Cos(Vector3.Angle(-wc.wheel.up, -normal) * Mathf.Deg2Rad);

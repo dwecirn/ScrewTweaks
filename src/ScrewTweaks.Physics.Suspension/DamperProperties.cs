@@ -196,7 +196,15 @@ namespace ScrewTweaks.Physics.Suspension
 
             if (!found) return false;
 
-            setup = new DamperSetup(bumpLow, bumpHigh, reboundLow, reboundHigh);
+            // Clamped here rather than left to the slider: the builder's widget rescales whatever it is
+            // given into its own range and the manager writes the widget's text straight back into the
+            // property, so a value outside the range would come back changed - and a damping coefficient
+            // is a force multiplier, which is not a thing to have run away.
+            setup = new DamperSetup(
+                Mathf.Clamp(bumpLow, 0f, MaxPercent / 100f),
+                Mathf.Clamp(bumpHigh, 0f, MaxPercent / 100f),
+                Mathf.Clamp(reboundLow, 0f, MaxPercent / 100f),
+                Mathf.Clamp(reboundHigh, 0f, MaxPercent / 100f));
             return true;
         }
 
