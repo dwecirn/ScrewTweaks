@@ -1,0 +1,66 @@
+#nullable enable
+
+using NWH.WheelController3D;
+using UnityEngine;
+
+namespace ScrewTweaks.Physics.Tires
+{
+    internal struct WheelSample
+    {
+        public string Name;
+        public float Kappa;
+        public float AlphaDeg;
+        public float Fx;
+        public float Fy;
+        public float Fz;
+        public float FxMax;
+        public float FyMax;
+        public float Vx;
+        public float Omega;
+        public float SlipXk;   // slip-vector share used by the combined-slip model
+        public float SlipYs;
+    }
+
+    /// <summary>
+    /// Last computed sample per wheel, for the diagnostic panel. Purely observational.
+    /// </summary>
+    internal static class TireTelemetry
+    {
+        private const int Capacity = 8;
+
+        private static readonly WheelController?[] Wheels = new WheelController?[Capacity];
+        private static readonly WheelSample[] Samples = new WheelSample[Capacity];
+        private static int _count;
+
+        internal static int Count => _count;
+
+        internal static void Report(WheelController wc, in WheelSample sample)
+        {
+            for (int i = 0; i < _count; i++)
+            {
+                if (Wheels[i] == wc)
+                {
+                    Samples[i] = sample;
+                    return;
+                }
+            }
+
+            if (_count < Capacity)
+            {
+                Wheels[_count] = wc;
+                Samples[_count] = sample;
+                _count++;
+            }
+        }
+
+        internal static bool TryGet(int index, out WheelController? wc, out WheelSample sample)
+        {
+            wc = null;
+            sample = default;
+            if (index < 0 || index >= _count) return false;
+            wc = Wheels[index];
+            sample = Samples[index];
+            return true;
+        }
+    }
+}

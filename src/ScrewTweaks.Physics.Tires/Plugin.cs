@@ -83,9 +83,29 @@ namespace ScrewTweaks.Physics.Tires
                 DrawSlider("Combined slip", TireTuning.CombinedSlipConfig, 0f, 1f, "0.00");
             }
 
+            GUILayout.Space(12f);
+            GUILayout.Label("Live wheels (drive, then read):");
+            GUILayout.Label("  kappa | alpha deg | Fx/FxMax | Fy/FyMax | Fz | vx | omega");
+            int count = TireTelemetry.Count;
+            for (int i = 0; i < count; i++)
+            {
+                if (!TireTelemetry.TryGet(i, out var wc, out var s) || wc == null)
+                    continue;
+
+                GUILayout.Label(
+                    $"{s.Name}: k={s.Kappa,6:F3} a={s.AlphaDeg,6:F1} " +
+                    $"x={SafeRatio(s.Fx, s.FxMax),4:F2} y={SafeRatio(s.Fy, s.FyMax),4:F2} " +
+                    $"Fz={s.Fz,6:F0} vx={s.Vx,6:F1} w={s.Omega,6:F1}");
+            }
+
             GUILayout.Space(10f);
             GUILayout.Label("The slot replaces WheelController.FrictionUpdate;");
             GUILayout.Label("Native keeps the game's original friction.");
+        }
+
+        private static float SafeRatio(float value, float max)
+        {
+            return max > 1e-4f ? Mathf.Abs(value) / max : 0f;
         }
 
         private static void DrawSlider(string label, BepInEx.Configuration.ConfigEntry<float>? entry, float min, float max, string format)

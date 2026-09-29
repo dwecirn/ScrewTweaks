@@ -90,6 +90,23 @@ namespace ScrewTweaks.Physics.Tires
             wc.sideFriction.force = fy;
             wc.forwardFriction.slip = kappa;
             wc.sideFriction.slip = alpha;
+
+            TireTelemetry.Report(wc, new WheelSample
+            {
+                Name = wc.gameObject.name,
+                Kappa = kappa,
+                AlphaDeg = alpha * Mathf.Rad2Deg,
+                Fx = fx,
+                Fy = fy,
+                Fz = fz,
+                FxMax = fwdMax,
+                FyMax = sideMax,
+                Vx = vx,
+                Omega = omega,
+                SlipXk = kappa,
+                SlipYs = Mathf.Sin(alpha),
+            });
+
             return true;
         }
 
