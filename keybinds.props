@@ -3,14 +3,12 @@
   <PropertyGroup>
     <!--
       Default key bindings, written as UnityEngine.KeyCode member names
-      (e.g. B, N, F5, LeftShift, Mouse0).
+      (e.g. F7, F8, F9, LeftShift, Mouse0).
 
-      These are compiled into the plugins as their initial values. Players can
-      override them at run time in:
-        BepInEx/config/dev.dwecirn.screwtweaks.assist.cfg
-        BepInEx/config/dev.dwecirn.screwtweaks.autoshift.cfg
+      These are compiled into the plugins as constants; to change one, edit it
+      here and rebuild. Feature settings, including their saved state, live at
+      run time in BepInEx/config/dev.dwecirn.screwtweaks.<name>.cfg.
     -->
-    <AutoShiftKey>N</AutoShiftKey>
     <PanelKey>F7</PanelKey>
     <DumpKey>F8</DumpKey>
     <TelemetryKey>F9</TelemetryKey>

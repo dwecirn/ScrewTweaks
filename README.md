@@ -109,7 +109,7 @@ dotnet build ScrewTweaks.sln --no-restore -m:1 -t:ListVersions
 | `ScrewTweaks.Physics.Tires` | Pluggable tire model slot (in-game selectable) | **F9** (record telemetry) |
 | `ScrewTweaks.ECU` | ABS / traction control channels | — |
 | `ScrewTweaks.Steering` | Instant Steering + Steering Limit Relax | — |
-| `ScrewTweaks.AutoShift` | Fast auto-shift tuning | **N** |
+| `ScrewTweaks.AutoShift` | Faster automatic shifting (F7 → Auto Shift) | — |
 | `ScrewTweaks.EngineSound` | Hybrid engine sound (both engine types audible) | — |
 | `ScrewTweaks.PowerFactor` | Per-engine-type power factor, saved with the car (fully automatic) | — |
 
@@ -123,6 +123,7 @@ Press **F7** for a tabbed window. Each feature plugin registers a titled section
 
 - **ECU** — ABS and traction channels
 - **Tires** — tire model selection, tuning, live per-wheel telemetry
+- **Auto Shift** — on/off for the faster shift timing
 
 The panel unlocks the cursor while open. Sections are listed in plugin load order.
 
@@ -197,7 +198,10 @@ coasting as well.
 
 ### Other plugins
 
-- **Auto Shift (N)** — applies a faster auto-shift tuning.
+- **Auto Shift** — `General/Enabled` in `dev.dwecirn.screwtweaks.autoshift.cfg`, and the same entry
+  as the **F7 → Auto Shift** checkbox. Shifts are taken 0.2 s after the RPM threshold is crossed
+  instead of 1 s, with a shorter cooldown and a shorter torque cut. Unticking the box writes the
+  game's own values back.
 - **Engine Sound** — restores sound for the engine type the stock selector drops on hybrids, and
   mixes the two by instantaneous torque.
 - **Power Factor** — a per-engine-type power factor that travels with the car's saved file. Fully

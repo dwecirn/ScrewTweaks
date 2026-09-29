@@ -92,7 +92,7 @@ dotnet build ScrewTweaks.sln --no-restore -m:1 -t:ListVersions
 | `ScrewTweaks.Physics.Tires` | 差し替え可能なタイヤモデルスロット（ゲーム内で選択） | **F9**（テレメトリ記録） |
 | `ScrewTweaks.ECU` | ABS / トラクションコントロール | — |
 | `ScrewTweaks.Steering` | Instant Steering + Steering Limit Relax | — |
-| `ScrewTweaks.AutoShift` | より速いオートシフト調整 | **N** |
+| `ScrewTweaks.AutoShift` | より速いオートシフト（F7 → Auto Shift） | — |
 | `ScrewTweaks.EngineSound` | ハイブリッド車のエンジン音（両方のエンジンが聞こえる） | — |
 | `ScrewTweaks.PowerFactor` | エンジン種別ごとのパワーファクター。車の保存データに乗る（全自動） | — |
 
@@ -106,6 +106,7 @@ dotnet build ScrewTweaks.sln --no-restore -m:1 -t:ListVersions
 
 - **ECU** — ABS とトラクションのチャンネル
 - **Tires** — タイヤモデルの選択、調整、ホイールごとのライブテレメトリ
+- **Auto Shift** — より速いシフトタイミングのオン／オフ
 
 パネルを開くとカーソルが解放されます。セクションはプラグインの読み込み順に並びます。
 
@@ -170,7 +171,7 @@ PartWheelDirt2 g= 0.30  BCDE=(  7.0, 1.10, 0.83, 1.00)  k= 0.021/ 0.000 a=  -4.1
 
 ### その他のプラグイン
 
-- **Auto Shift (N)** — より速いオートシフト調整を適用します。
+- **Auto Shift** — `dev.dwecirn.screwtweaks.autoshift.cfg` の `General/Enabled`。**F7 → Auto Shift** のチェックボックスと同じ設定です。RPM しきい値を越えてから 0.2 秒でシフトし（バニラは 1 秒）、クールダウンとトルクカットも短くなります。チェックを外すとゲーム本来の値に戻ります。
 - **Engine Sound** — 標準のセレクタがハイブリッド車で落としてしまう側のエンジン音を復活させ、瞬時トルクで両者をミックスします。
 - **Power Factor** — エンジン種別ごとのパワーファクターで、車の保存データと一緒に移動します。**全自動**：Harmony パッチで注入・永続化するため、キーは不要です。
 

@@ -92,7 +92,7 @@ dotnet build ScrewTweaks.sln --no-restore -m:1 -t:ListVersions
 | `ScrewTweaks.Physics.Tires` | 可插拔的轮胎模型插槽（游戏内可选） | **F9**（录制遥测） |
 | `ScrewTweaks.ECU` | ABS / 牵引力控制通道 | — |
 | `ScrewTweaks.Steering` | Instant Steering + Steering Limit Relax | — |
-| `ScrewTweaks.AutoShift` | 更快的自动换挡标定 | **N** |
+| `ScrewTweaks.AutoShift` | 更快的自动换挡（F7 → Auto Shift） | — |
 | `ScrewTweaks.EngineSound` | 混合动力车的引擎声音（两种引擎都能听到） | — |
 | `ScrewTweaks.PowerFactor` | 按引擎类型设置的功率系数，随车存档（全自动） | — |
 
@@ -106,6 +106,7 @@ dotnet build ScrewTweaks.sln --no-restore -m:1 -t:ListVersions
 
 - **ECU** —— ABS 与牵引力通道
 - **Tires** —— 轮胎模型选择、调参、每轮实时遥测
+- **Auto Shift** —— 更快换挡时序的开关
 
 面板打开时会解锁鼠标。板块按插件加载顺序排列。
 
@@ -171,7 +172,7 @@ PartWheelDirt2 g= 0.30  BCDE=(  7.0, 1.10, 0.83, 1.00)  k= 0.021/ 0.000 a=  -4.1
 
 ### 其他插件
 
-- **Auto Shift (N)** —— 应用更快的自动换挡标定。
+- **Auto Shift** —— `dev.dwecirn.screwtweaks.autoshift.cfg` 里的 `General/Enabled`，和 **F7 → Auto Shift** 里的勾选框是同一个设置。越过转速阈值后 0.2 秒就换挡（原版 1 秒），冷却和扭矩中断也更短；取消勾选会把游戏自己的数值写回去。
 - **Engine Sound** —— 恢复原版选择器在混动车上丢掉的那一半引擎声音，并按瞬时扭矩把两者混合。
 - **Power Factor** —— 按引擎类型设置的功率系数，随车的存档一起走。**全自动**：通过 Harmony 注入并持久化，不需要键位。
 
