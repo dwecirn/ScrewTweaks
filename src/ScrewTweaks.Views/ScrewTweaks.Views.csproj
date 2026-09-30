@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>ScrewTweaks.Views</AssemblyName>
+    <RootNamespace>ScrewTweaks.Views</RootNamespace>
+    <Version>0.1.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ScrewTweaks.Panel\ScrewTweaks.Panel.csproj" />
+  </ItemGroup>
+
+</Project>
