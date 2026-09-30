@@ -193,3 +193,36 @@ EcuAids.Register(new MyAbs());
 its own torque but *before* it is handed to the wheel, so returning a modified value is all that is
 needed. The game's own aid on that channel is neutralised for you.
 
+### 5. A camera pose
+
+Implement `IViewPose` and register it. `Follow/Pose` in the **Views** config selects it by
+name, and that name is a config value, so it is never translated.
+
+```csharp
+using ScrewTweaks.Views;
+using UnityEngine;
+
+public sealed class HorizonLevel : IViewPose
+{
+    public string Name => "Level";
+
+    public void Place(Transform camera, ChaseContext ctx)
+    {
+        // Everything in ctx is in the car's own frame: where the body is, which way it points
+        // (roll included), how far behind and above to sit, and the point to aim at.
+        Vector3 local = new Vector3(0f, ctx.Height, -ctx.Distance);
+        camera.position = ctx.Origin + ctx.Rotation * local;
+
+        // World up, so the horizon stays level instead of rolling with the car.
+        camera.rotation = Quaternion.LookRotation(ctx.Rotation * (Vector3.zero - local), Vector3.up);
+    }
+}
+
+// in Start():
+ViewPoses.Register(new HorizonLevel());
+```
+
+A pose is called once per frame while the patched camera mode is the one in use. Everything it
+is given is a function of the car's current pose, so a pose that keeps no state of its own
+cannot lag — that is what makes the bundled `Rigid` rigid, and the property to preserve. The
+camera's transform is written by the module, so there is nothing to patch.

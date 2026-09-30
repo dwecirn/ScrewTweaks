@@ -85,7 +85,7 @@ try {
         Write-Host "Changed: $($changedNames -join ', ')" -ForegroundColor Green
         Write-Host '  -> bump only those components.'
         Write-Host '  -> describe the changes in the GitHub release notes (no CHANGELOG in the repo).'
-        Write-Host '  -> if a public API changed (PanelHost.Register, ITireModel, IDamperModel, ITireVerticalModel, IBrakeAid, IDriveAid),'
+        Write-Host '  -> if a public API changed (PanelHost.Register, ITireModel, IDamperModel, ITireVerticalModel, IBrakeAid, IDriveAid, IViewPose),'
         Write-Host '     bump major and state the minimum in the [BepInDependency] attributes.'
     }
 

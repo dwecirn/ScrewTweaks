@@ -179,3 +179,32 @@ EcuAids.Register(new MyAbs());
 
 `IBrakeAid` / `IDriveAid` 每个轮子每个物理步被调用一次——**在游戏算完自己的扭矩之后、交给轮子之前**，所以你只需要返回修改后的值。该通道上游戏自带的辅助会被自动旁通。
 
+### 5. 一个相机姿态
+
+实现 `IViewPose` 并注册。**视角**配置里的 `Follow/Pose` 按名字选中它，而名字是配置值，所以永远不翻译。
+
+```csharp
+using ScrewTweaks.Views;
+using UnityEngine;
+
+public sealed class HorizonLevel : IViewPose
+{
+    public string Name => "Level";
+
+    public void Place(Transform camera, ChaseContext ctx)
+    {
+        // ctx 里的东西全在车体坐标系里：车身在哪、朝哪（含滚转）、该在车后多远上方多高，
+        // 以及瞄准哪个点。
+        Vector3 local = new Vector3(0f, ctx.Height, -ctx.Distance);
+        camera.position = ctx.Origin + ctx.Rotation * local;
+
+        // 用世界 up，地平线保持水平，不随车滚转。
+        camera.rotation = Quaternion.LookRotation(ctx.Rotation * (Vector3.zero - local), Vector3.up);
+    }
+}
+
+// 在 Start() 里：
+ViewPoses.Register(new HorizonLevel());
+```
+
+只要被 patch 的视角正在使用，姿态每帧调用一次。它拿到的全部都是车当前位姿的函数，所以自身不记状态的姿态不可能滞后——内置的 `Rigid` 就是这样，这也是这个槽位要保持的性质。相机的变换由本模块自己写，没有需要 patch 的地方。

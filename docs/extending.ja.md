@@ -180,3 +180,32 @@ EcuAids.Register(new MyAbs());
 
 `IBrakeAid` / `IDriveAid` はホイールごと・物理ステップごとに 1 回呼ばれます。**ゲームが自身のトルクを計算した後、ホイールに渡す前**なので、変更後の値を返すだけで十分です。そのチャンネルのゲーム標準アシストは自動的に無効化されます。
 
+### 5. カメラポーズ
+
+`IViewPose` を実装して登録します。**ビュー**の設定にある `Follow/Pose` が名前で選び、その名前は設定値なので翻訳しません。
+
+```csharp
+using ScrewTweaks.Views;
+using UnityEngine;
+
+public sealed class HorizonLevel : IViewPose
+{
+    public string Name => "Level";
+
+    public void Place(Transform camera, ChaseContext ctx)
+    {
+        // ctx の中身はすべて車体座標系です：車体の位置、向き（ロール含む）、後方と上方の距離、
+        // そして狙う点。
+        Vector3 local = new Vector3(0f, ctx.Height, -ctx.Distance);
+        camera.position = ctx.Origin + ctx.Rotation * local;
+
+        // 世界の up を使うので、地平線は車と一緒には傾きません。
+        camera.rotation = Quaternion.LookRotation(ctx.Rotation * (Vector3.zero - local), Vector3.up);
+    }
+}
+
+// Start() で：
+ViewPoses.Register(new HorizonLevel());
+```
+
+ポーズは、対象モードが使われている間 1 フレームに 1 回呼ばれます。渡されるものはすべて車の現在の姿勢の関数なので、自分で状態を持たないポーズは遅れようがありません。同梱の `Rigid` がまさにそうで、このスロットで保つべき性質です。カメラの transform は本モジュールが書くので、パッチは要りません。
