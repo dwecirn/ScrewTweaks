@@ -55,6 +55,7 @@ Every plugin is independent — install, enable and tune them separately. The pa
 | `ScrewTweaks.Physics.Suspension` | Four-way damper and the wheel's vertical freedom | [Suspension physics](#suspension-physics) |
 | `ScrewTweaks.ECU` | ABS and traction control channels | [ECU](#ecu) |
 | `ScrewTweaks.Steering` | Instant steering, steering limit relax | [Steering](#steering) |
+| `ScrewTweaks.Views` | A third-person view with no smoothing | [Views](#views) |
 | `ScrewTweaks.AutoShift` | Faster automatic shifting | [Auto Shift](#auto-shift) |
 | `ScrewTweaks.EngineSound` | Hybrid engine sound | [Other plugins](#other-plugins) |
 | `ScrewTweaks.PowerFactor` | Per-engine power factor, saved with the car | [Other plugins](#other-plugins) |
@@ -345,6 +346,29 @@ without re-spawning them.
 Instant Steering used to be a per-suspension on/off property in the car builder. It is a setting now, so
 it applies to every car at once; cars saved with the old property keep an unused line in their file, which
 the game ignores.
+
+## Views
+
+The game's third-person cameras all smooth the camera toward the car, and those smoothing speeds live on the
+camera prefabs rather than in any setting. This makes one of them rigid: the camera is bolted to the car,
+taking its position and its rotation every frame with nothing remembered in between, so the horizon tilts
+with the car the way it does in the seat view.
+
+Turn it on in **F7 → Views**. Which of the game's camera modes it patches is set by switching to that view in
+game and pressing **Use current** with the panel open — the game numbers its modes, and the number is what the
+setting stores.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `Follow/Enabled` | `false` | Bolt the camera to the car for the patched mode. The same setting as the checkbox |
+| `Follow/Mode` | `10` | Which of the game's camera modes to patch |
+| `Follow/Pose` | `Rigid` | The pose algorithm, registered through `ViewPoses.Register` |
+| `Follow/Distance` | `3.0` | How far behind the car, as a multiple of the car's own size radius |
+| `Follow/Height` | `1.4` | How far above the car, likewise |
+| `Follow/AimHeight` | `0.3` | The height in the car's own frame the camera aims at, likewise |
+
+Only that one mode changes; every other view keeps the smoothing the game gave it. Distance and height are
+multiples of the car's own size, so a go-kart and a truck are both framed by the same numbers.
 
 ## Auto Shift
 
