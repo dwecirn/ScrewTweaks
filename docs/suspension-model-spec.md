@@ -382,11 +382,14 @@ Specifically:
 1. **Spring model slot.** Nothing to fix today: the spring is used over its whole domain and the parts are
    already tuned to a common frequency. Only worth adding alongside item 2.
 2. **Fixing `progressiveness`** so it moves the curve values and not only the tangents.
-3. **Anti-squat / anti-dive.** `WheelController.squat = 0.2f` is live - `UpdateForces` turns
-   `forwardFriction.force * radius * squat` into a couple on the chassis - but it has no part property and
-   no UI, so it cannot be adjusted. Note the coupling: it scales the *tire force*, so changing tire model
-   changes the car's pitch under power. `IsChassisTorqueEnabled` is the neighbouring dead field (never
-   assigned, so its branch never runs), and `DummyRigidbody` is written but never read.
+3. **Anti-squat / anti-dive.** `WheelController.squat = 0.2f` looks live - `UpdateForces` computes
+   `forwardFriction.force * radius * squat` - but the couple it feeds is only applied inside
+   `if (IsChassisTorqueEnabled)`, and that property (`:661`) is never assigned anywhere, so the value is
+   discarded and the car's pitch under power is the plain physical one. The switch reaches both effects at
+   once: it also adds the wheel's angular-momentum reaction to the same couple. Neither has a part property
+   or a UI, so it cannot be adjusted; note that it scales the *tire force*, so if it were ever switched on,
+   changing the tire model would change the car's pitch under power. `DummyRigidbody` is written but never
+   read.
 4. **Honouring `Part.SuspensionDamper`** (the dead 1.3 on Race parts). It restores the game's own data
    rather than rebalancing it, but it does change car balance, so it is off the table unless the user asks
    for it.
